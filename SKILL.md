@@ -31,16 +31,17 @@ Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 
 ## Installation
 
-### Quick Start (npx - no install required)
+### Quick Start (no install required)
 
 ```bash
-# Generate a new wallet
+# Using pnpm (recommended)
+pnpm dlx @arkade-os/skill generate
+pnpm dlx @arkade-os/skill init <private-key-hex>
+pnpm dlx @arkade-os/skill address
+
+# Using npx
 npx -y -p @arkade-os/skill arkade generate
-
-# Initialize with the generated key
 npx -y -p @arkade-os/skill arkade init <private-key-hex>
-
-# Get your Arkade address
 npx -y -p @arkade-os/skill arkade address
 ```
 
@@ -69,7 +70,8 @@ pnpm add @arkade-os/skill
 ## CLI Commands
 
 > **Note:** Examples below use `arkade` directly (assumes global install).
-> For npx, prefix commands with: `npx -y -p @arkade-os/skill`
+> For pnpm: `pnpm dlx @arkade-os/skill <command>`
+> For npx: `npx -y -p @arkade-os/skill arkade <command>`
 
 ### Wallet Management
 
