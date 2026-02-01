@@ -9,6 +9,7 @@
  * Default server: https://arkade.computer
  *
  * Usage:
+ *   arkade generate                   # Generate random private key
  *   arkade init <key> [url]           # Initialize wallet
  *   arkade address                    # Show Ark address
  *   arkade boarding-address           # Show boarding address
@@ -64,10 +65,19 @@ function saveConfig(config) {
  */
 async function getSDK() {
   try {
-    // Try to import from the built dist
     const sdk = await import("@arkade-os/sdk");
-    const skill = await import("../dist/esm/index.js");
-    return { sdk, skill };
+    // Import skills directly (ESM requires explicit .js extensions)
+    const { ArkadeBitcoinSkill } = await import(
+      "../dist/esm/skills/arkadeBitcoin.js"
+    );
+    const { ArkaLightningSkill } = await import(
+      "../dist/esm/skills/lightning.js"
+    );
+    const { LendaSwapSkill } = await import("../dist/esm/skills/lendaswap.js");
+    return {
+      sdk,
+      skill: { ArkadeBitcoinSkill, ArkaLightningSkill, LendaSwapSkill },
+    };
   } catch (e) {
     console.error("Error: SDK not found. Run 'pnpm build' first.");
     console.error(e.message);
@@ -116,6 +126,7 @@ USAGE:
   arkade <command> [options]
 
 COMMANDS:
+  generate                   Generate a new random private key
   init <key> [url]           Initialize wallet with private key (hex)
                              Default server: arkade.computer
 
@@ -147,6 +158,7 @@ COMMANDS:
   help                         Show this help message
 
 EXAMPLES:
+  arkade generate
   arkade init abc123...
   arkade init abc123... https://custom-server.com
   arkade balance
@@ -162,6 +174,24 @@ ENVIRONMENT:
 CONFIG:
   Data stored in: ~/.arkade-wallet/config.json
 `);
+}
+
+/**
+ * Generate a random private key.
+ */
+async function cmdGenerate() {
+  const { SingleKey } = await import("@arkade-os/sdk");
+
+  const identity = SingleKey.fromRandomBytes();
+  const privateKey = Buffer.from(identity.key).toString("hex");
+
+  console.log("Generated new private key:");
+  console.log(privateKey);
+  console.log("");
+  console.log("IMPORTANT: Save this key securely! It cannot be recovered.");
+  console.log("");
+  console.log("To initialize your wallet, run:");
+  console.log(`  arkade init ${privateKey}`);
 }
 
 /**
@@ -909,6 +939,9 @@ async function main() {
   const command = args[0];
 
   switch (command) {
+    case "generate":
+      await cmdGenerate();
+      break;
     case "init":
       await cmdInit(args[1], args[2]);
       break;
