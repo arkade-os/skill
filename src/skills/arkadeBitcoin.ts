@@ -34,8 +34,8 @@ import type {
  *
  * This skill wraps the core wallet functionality and provides:
  * - Off-chain Bitcoin transactions via Ark
- * - Onboarding (on-chain to off-chain)
- * - Offboarding (off-chain to on-chain)
+ * - Get paid on-chain via boarding address + onboard
+ * - Pay on-chain via offboard to any Bitcoin address
  * - Balance management
  * - Transaction history
  *
@@ -72,7 +72,7 @@ import type {
 export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
   readonly name = "arkade-bitcoin";
   readonly description =
-    "Send and receive Bitcoin over Arkade protocol with on/off ramp support";
+    "Send and receive Bitcoin over Arkade off-chain, get paid on-chain (onboard), pay on-chain (offboard)";
   readonly version = "1.0.0";
 
   private readonly ramps: Ramps;
@@ -278,11 +278,14 @@ export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
   }
 
   /**
-   * Onboard Bitcoin from on-chain to off-chain (Ark).
+   * Get paid on-chain: Convert received on-chain BTC to off-chain.
    *
+   * Use this after receiving on-chain Bitcoin to your boarding address.
    * This converts boarding UTXOs into VTXOs through a cooperative
    * settlement with the Ark server. After onboarding, funds are
    * available for instant off-chain transactions.
+   *
+   * Flow: Someone pays you on-chain → funds arrive at boarding address → onboard → funds available off-chain
    *
    * @param params - Onboard parameters
    * @returns Result containing the commitment transaction ID
@@ -290,10 +293,11 @@ export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
    *
    * @example
    * ```typescript
-   * // Get fee info from the Ark server
-   * const arkInfo = await arkProvider.getInfo();
+   * // Step 1: Give your boarding address to receive on-chain payment
+   * const boardingAddress = await bitcoinSkill.getBoardingAddress();
    *
-   * // Onboard all available boarding UTXOs
+   * // Step 2: After receiving payment, onboard the funds
+   * const arkInfo = await arkProvider.getInfo();
    * const result = await bitcoinSkill.onboard({
    *   feeInfo: arkInfo.feeInfo,
    *   eventCallback: (event) => console.log("Settlement event:", event.type),
@@ -324,10 +328,13 @@ export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
   }
 
   /**
-   * Offboard Bitcoin from off-chain (Ark) to on-chain.
+   * Pay on-chain: Send off-chain BTC to any on-chain Bitcoin address.
    *
-   * This performs a collaborative exit, converting VTXOs back to
-   * regular on-chain Bitcoin UTXOs at the specified destination address.
+   * Use this to pay someone who needs on-chain Bitcoin. This performs a
+   * collaborative exit, converting your VTXOs back to regular on-chain
+   * Bitcoin UTXOs at the recipient's destination address.
+   *
+   * Flow: You have off-chain funds → offboard to recipient's on-chain address → they receive on-chain BTC
    *
    * @param params - Offboard parameters including destination address
    * @returns Result containing the commitment transaction ID
@@ -335,16 +342,14 @@ export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
    *
    * @example
    * ```typescript
-   * // Get fee info from the Ark server
+   * // Pay someone at an on-chain Bitcoin address
    * const arkInfo = await arkProvider.getInfo();
-   *
-   * // Offboard all VTXOs to an on-chain address
    * const result = await bitcoinSkill.offboard({
-   *   destinationAddress: "bc1q...",
+   *   destinationAddress: "bc1q...", // recipient's on-chain address
    *   feeInfo: arkInfo.feeInfo,
    *   eventCallback: (event) => console.log("Settlement event:", event.type),
    * });
-   * console.log("Offboarded! Commitment:", result.commitmentTxid);
+   * console.log("Paid on-chain! Commitment:", result.commitmentTxid);
    * ```
    */
   async offboard(params: OffboardParams): Promise<RampResult> {

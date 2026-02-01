@@ -1,10 +1,11 @@
 # @arkade-os/skill
 
-Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, Lightning Network via Boltz, swap USDC/USDT via LendaSwap.
+Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, on-chain via onboard/offboard, Lightning Network via Boltz, and swap USDC/USDT via LendaSwap.
 
 ## Features
 
 - **Bitcoin on Arkade**: Instant off-chain Bitcoin transactions
+- **On-chain Payments**: Get paid on-chain (onboard) and pay on-chain (offboard)
 - **Lightning Network**: Pay and receive via Boltz submarine swaps
 - **Stablecoin Swaps**: Trade BTC for USDC/USDT on Polygon, Ethereum, Arbitrum
 - **CLI for Agents**: Command-line interface designed for MoltBot and other agents
@@ -74,7 +75,7 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 
 | Skill | Description |
 |-------|-------------|
-| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade, on/off ramps |
+| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade off-chain, get paid on-chain (onboard), pay on-chain (offboard) |
 | `ArkaLightningSkill` | Lightning payments via Boltz swaps |
 | `LendaSwapSkill` | USDC/USDT swaps via LendaSwap |
 
@@ -88,8 +89,8 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 | `balance` | Show balance breakdown |
 | `send <addr> <amt>` | Send sats |
 | `history` | Transaction history |
-| `onboard` | On-chain to Arkade |
-| `offboard <addr>` | Arkade to on-chain |
+| `onboard` | Get paid on-chain: convert received on-chain BTC to off-chain |
+| `offboard <addr>` | Pay on-chain: send off-chain BTC to an on-chain address |
 | `ln-invoice <amt>` | Create Lightning invoice |
 | `ln-pay <bolt11>` | Pay Lightning invoice |
 | `ln-fees` | Show swap fees |
