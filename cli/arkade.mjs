@@ -28,7 +28,6 @@
  *   arkade help                       # Show help
  */
 
-import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -172,8 +171,10 @@ CONFIG:
  * Generate a random private key.
  */
 async function cmdGenerate() {
-  // Generate 32 random bytes (256 bits) for a valid secp256k1 private key
-  const privateKey = randomBytes(32).toString("hex");
+  const { SingleKey } = await import("@arkade-os/sdk");
+
+  const identity = SingleKey.fromRandomBytes();
+  const privateKey = Buffer.from(identity.key).toString("hex");
 
   console.log("Generated new private key:");
   console.log(privateKey);
