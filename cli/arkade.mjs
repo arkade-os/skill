@@ -602,12 +602,6 @@ async function cmdSwapQuote(amount, from, to) {
     process.exit(1);
   }
 
-  const sats = parseInt(amount, 10);
-  if (isNaN(sats) || sats <= 0) {
-    console.error("Error: Invalid amount.");
-    process.exit(1);
-  }
-
   const wallet = await createWallet();
   const { skill } = await getSDK();
   const { LendaSwapSkill } = skill;
@@ -620,9 +614,19 @@ async function cmdSwapQuote(amount, from, to) {
   try {
     let quote;
     if (from === "btc_arkade" || from === "btc") {
+      const sats = parseInt(amount, 10);
+      if (isNaN(sats) || sats <= 0) {
+        console.error("Error: Invalid amount.");
+        process.exit(1);
+      }
       quote = await lendaswap.getQuoteBtcToStablecoin(sats, to);
     } else {
-      quote = await lendaswap.getQuoteStablecoinToBtc(sats, from);
+      const tokenAmount = parseFloat(amount);
+      if (isNaN(tokenAmount) || tokenAmount <= 0) {
+        console.error("Error: Invalid amount.");
+        process.exit(1);
+      }
+      quote = await lendaswap.getQuoteStablecoinToBtc(tokenAmount, from);
     }
 
     console.log("Swap Quote:");

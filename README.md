@@ -1,6 +1,6 @@
 # @arkade-os/skill
 
-Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade and Lightning, swap USDC/USDT via LendaSwap.
+Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, Lightning Network via Boltz, swap USDC/USDT via LendaSwap.
 
 ## Features
 

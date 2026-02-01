@@ -13,7 +13,6 @@ import {
   ArkTransaction,
   ExtendedCoin,
   ExtendedVirtualCoin,
-  waitForIncomingFunds,
   type IncomingFunds,
 } from "@arkade-os/sdk";
 import type {
@@ -213,20 +212,55 @@ export class ArkadeBitcoinSkill implements BitcoinSkill, RampSkill {
    * @throws Error if timeout expires without receiving funds
    */
   async waitForIncomingFunds(timeoutMs?: number): Promise<IncomingFundsEvent> {
-    const timeoutPromise = timeoutMs
-      ? new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Timeout waiting for incoming funds")),
-            timeoutMs,
-          ),
-        )
-      : null;
+    let stopSubscription: (() => void) | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
 
-    const fundsPromise = waitForIncomingFunds(this.wallet);
+    const fundsPromise = new Promise<IncomingFunds>((resolve, reject) => {
+      this.wallet
+        .notifyIncomingFunds((funds) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          resolve(funds);
+        })
+        .then((stop) => {
+          stopSubscription = stop;
+          if (settled) {
+            stop();
+          }
+        })
+        .catch((error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          reject(error);
+        });
 
-    const result: IncomingFunds = timeoutPromise
-      ? await Promise.race([fundsPromise, timeoutPromise])
-      : await fundsPromise;
+      if (timeoutMs !== undefined) {
+        timeoutId = setTimeout(() => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          reject(new Error("Timeout waiting for incoming funds"));
+        }, timeoutMs);
+      }
+    });
+
+    let result: IncomingFunds;
+    try {
+      result = await fundsPromise;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (stopSubscription) {
+        stopSubscription();
+      }
+    }
 
     if (result.type === "utxo") {
       return {

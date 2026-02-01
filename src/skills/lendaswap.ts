@@ -38,6 +38,23 @@ const TOKEN_DECIMALS: Record<string, number> = {
   usdt_arb: 6,
 };
 
+function parseExpiry(raw: unknown, fallbackMs: number): Date {
+  if (raw === null || raw === undefined) {
+    return new Date(Date.now() + fallbackMs);
+  }
+  if (typeof raw === "string") {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  if (typeof raw === "number") {
+    const ms = raw < 1_000_000_000_000 ? raw * 1000 : raw;
+    return new Date(ms);
+  }
+  return new Date(Date.now() + fallbackMs);
+}
+
 /**
  * Configuration for the LendaSwapSkill.
  */
@@ -181,7 +198,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
         amount: data.fee?.amount || 0,
         percentage: data.fee?.percentage || 0,
       },
-      expiresAt: new Date(Date.now() + 60000), // 1 minute expiry
+      expiresAt: parseExpiry(data.expiresAt, 60000),
     };
   }
 
@@ -217,7 +234,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
         amount: data.fee?.amount || 0,
         percentage: data.fee?.percentage || 0,
       },
-      expiresAt: new Date(Date.now() + 60000),
+      expiresAt: parseExpiry(data.expiresAt, 60000),
     };
   }
 
@@ -248,6 +265,9 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
 
     const data = (await response.json()) as Record<string, any>;
 
+    const resolvedSourceAmount =
+      params.sourceAmount ?? data.sourceAmount ?? 0;
+
     // Store swap locally
     const storedSwap: StoredSwap = {
       swapId: data.swapId,
@@ -255,7 +275,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
       status: "awaiting_funding",
       sourceToken: "btc_arkade",
       targetToken: params.targetToken,
-      sourceAmount: params.sourceAmount || 0,
+      sourceAmount: resolvedSourceAmount,
       targetAmount: data.targetAmount || 0,
       exchangeRate: data.exchangeRate || 0,
       createdAt: Date.now(),
@@ -266,7 +286,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
     return {
       swapId: data.swapId,
       status: "awaiting_funding",
-      sourceAmount: params.sourceAmount || 0,
+      sourceAmount: resolvedSourceAmount,
       targetAmount: data.targetAmount || 0,
       exchangeRate: data.exchangeRate || 0,
       fee: {
