@@ -65,10 +65,19 @@ function saveConfig(config) {
  */
 async function getSDK() {
   try {
-    // Try to import from the built dist
     const sdk = await import("@arkade-os/sdk");
-    const skill = await import("../dist/esm/index.js");
-    return { sdk, skill };
+    // Import skills directly (ESM requires explicit .js extensions)
+    const { ArkadeBitcoinSkill } = await import(
+      "../dist/esm/skills/arkadeBitcoin.js"
+    );
+    const { ArkaLightningSkill } = await import(
+      "../dist/esm/skills/lightning.js"
+    );
+    const { LendaSwapSkill } = await import("../dist/esm/skills/lendaswap.js");
+    return {
+      sdk,
+      skill: { ArkadeBitcoinSkill, ArkaLightningSkill, LendaSwapSkill },
+    };
   } catch (e) {
     console.error("Error: SDK not found. Run 'pnpm build' first.");
     console.error(e.message);
