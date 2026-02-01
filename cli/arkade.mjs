@@ -9,6 +9,7 @@
  * Default server: https://arkade.computer
  *
  * Usage:
+ *   arkade generate                   # Generate random private key
  *   arkade init <key> [url]           # Initialize wallet
  *   arkade address                    # Show Ark address
  *   arkade boarding-address           # Show boarding address
@@ -27,6 +28,7 @@
  *   arkade help                       # Show help
  */
 
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -116,6 +118,7 @@ USAGE:
   arkade <command> [options]
 
 COMMANDS:
+  generate                   Generate a new random private key
   init <key> [url]           Initialize wallet with private key (hex)
                              Default server: arkade.computer
 
@@ -147,6 +150,7 @@ COMMANDS:
   help                         Show this help message
 
 EXAMPLES:
+  arkade generate
   arkade init abc123...
   arkade init abc123... https://custom-server.com
   arkade balance
@@ -162,6 +166,22 @@ ENVIRONMENT:
 CONFIG:
   Data stored in: ~/.arkade-wallet/config.json
 `);
+}
+
+/**
+ * Generate a random private key.
+ */
+async function cmdGenerate() {
+  // Generate 32 random bytes (256 bits) for a valid secp256k1 private key
+  const privateKey = randomBytes(32).toString("hex");
+
+  console.log("Generated new private key:");
+  console.log(privateKey);
+  console.log("");
+  console.log("IMPORTANT: Save this key securely! It cannot be recovered.");
+  console.log("");
+  console.log("To initialize your wallet, run:");
+  console.log(`  arkade init ${privateKey}`);
 }
 
 /**
@@ -909,6 +929,9 @@ async function main() {
   const command = args[0];
 
   switch (command) {
+    case "generate":
+      await cmdGenerate();
+      break;
     case "init":
       await cmdInit(args[1], args[2]);
       break;
