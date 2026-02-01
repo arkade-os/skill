@@ -38,7 +38,7 @@ export interface BitcoinAddress {
  * Parameters for sending Bitcoin.
  */
 export interface SendParams {
-  /** Destination address (Ark address for off-chain, Bitcoin address for on-chain) */
+  /** Destination address (Ark address for offchain, Bitcoin address for onchain) */
   address: string;
   /** Amount in satoshis */
   amount: number;
@@ -49,7 +49,7 @@ export interface SendParams {
 }
 
 /**
- * Parameters for onboarding Bitcoin from on-chain to off-chain (Ark).
+ * Parameters for onboarding Bitcoin from onchain to offchain (Ark).
  */
 export interface OnboardParams {
   /** Fee information for the settlement */
@@ -61,10 +61,10 @@ export interface OnboardParams {
 }
 
 /**
- * Parameters for offboarding Bitcoin from off-chain (Ark) to on-chain.
+ * Parameters for offboarding Bitcoin from offchain (Ark) to onchain.
  */
 export interface OffboardParams {
-  /** Destination on-chain Bitcoin address */
+  /** Destination onchain Bitcoin address */
   destinationAddress: string;
   /** Fee information for the settlement */
   feeInfo: FeeInfo;
@@ -104,18 +104,18 @@ export interface RampResult {
 export interface BalanceInfo {
   /** Total available balance in satoshis */
   total: number;
-  /** Off-chain (Ark) balance breakdown */
+  /** Offchain (Ark) balance breakdown */
   offchain: {
     /** Settled VTXOs */
     settled: number;
     /** Pending VTXOs awaiting confirmation */
     preconfirmed: number;
-    /** Total off-chain available */
+    /** Total offchain available */
     available: number;
     /** Recoverable funds (swept or subdust) */
     recoverable: number;
   };
-  /** On-chain balance breakdown */
+  /** Onchain balance breakdown */
   onchain: {
     /** Confirmed boarding UTXOs */
     confirmed: number;
@@ -149,13 +149,13 @@ export interface BitcoinSkill extends Skill {
   getReceiveAddresses(): Promise<BitcoinAddress[]>;
 
   /**
-   * Get the primary Ark address for receiving off-chain Bitcoin.
+   * Get the primary Ark address for receiving offchain Bitcoin.
    * @returns The Ark address string
    */
   getArkAddress(): Promise<string>;
 
   /**
-   * Get the boarding address for receiving on-chain Bitcoin (to be onboarded).
+   * Get the boarding address for receiving onchain Bitcoin (to be onboarded).
    * @returns The boarding address string
    */
   getBoardingAddress(): Promise<string>;
@@ -188,18 +188,18 @@ export interface BitcoinSkill extends Skill {
 }
 
 /**
- * Interface for skills that support on/off ramping between on-chain and off-chain.
+ * Interface for skills that support on/off ramping between onchain and offchain.
  */
 export interface RampSkill extends Skill {
   /**
-   * Onboard Bitcoin from on-chain to off-chain (Ark).
+   * Onboard Bitcoin from onchain to offchain (Ark).
    * @param params Onboard parameters
    * @returns Result of the onboard operation
    */
   onboard(params: OnboardParams): Promise<RampResult>;
 
   /**
-   * Offboard Bitcoin from off-chain (Ark) to on-chain.
+   * Offboard Bitcoin from offchain (Ark) to onchain.
    * @param params Offboard parameters
    * @returns Result of the offboard operation
    */

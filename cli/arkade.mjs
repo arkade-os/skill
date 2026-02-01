@@ -15,8 +15,8 @@
  *   arkade balance                    # Show balance breakdown
  *   arkade send <address> <amount>    # Send sats
  *   arkade history                    # Transaction history
- *   arkade onboard                    # On-chain → Arkade
- *   arkade offboard <btc-address>     # Arkade → On-chain
+ *   arkade onboard                    # Onchain → Arkade
+ *   arkade offboard <btc-address>     # Arkade → Onchain
  *   arkade ln-invoice <amount> [desc] # Create Lightning invoice
  *   arkade ln-pay <bolt11>            # Pay Lightning invoice
  *   arkade ln-fees                    # Show swap fees
@@ -119,15 +119,15 @@ COMMANDS:
   init <key> [url]           Initialize wallet with private key (hex)
                              Default server: arkade.computer
 
-  address                    Show Ark address (for receiving off-chain)
-  boarding-address           Show boarding address (for on-chain deposits)
+  address                    Show Ark address (for receiving offchain)
+  boarding-address           Show boarding address (for onchain deposits)
   balance                    Show balance breakdown
 
   send <address> <amount>    Send satoshis to an Ark address
   history                    Show transaction history
 
-  onboard                    Move funds from on-chain to off-chain (Arkade)
-  offboard <btc-address>     Move funds from off-chain to on-chain
+  onboard                    Move funds from onchain to offchain (Arkade)
+  offboard <btc-address>     Move funds from offchain to onchain
 
   ln-invoice <amount> [desc] Create a Lightning invoice
   ln-pay <bolt11>            Pay a Lightning invoice
@@ -242,7 +242,7 @@ async function cmdBalance() {
   console.log("------------------");
   console.log(`Total:          ${formatSats(balance.total)} sats`);
   console.log("");
-  console.log("Off-chain (Ark):");
+  console.log("Offchain (Ark):");
   console.log(`  Available:    ${formatSats(balance.offchain.available)} sats`);
   console.log(`  Settled:      ${formatSats(balance.offchain.settled)} sats`);
   console.log(
@@ -252,7 +252,7 @@ async function cmdBalance() {
     `  Recoverable:  ${formatSats(balance.offchain.recoverable)} sats`,
   );
   console.log("");
-  console.log("On-chain (Boarding):");
+  console.log("Onchain (Boarding):");
   console.log(`  Total:        ${formatSats(balance.onchain.total)} sats`);
   console.log(`  Confirmed:    ${formatSats(balance.onchain.confirmed)} sats`);
   console.log(
@@ -386,7 +386,7 @@ async function cmdOffboard(destinationAddress) {
   const balance = await bitcoin.getBalance();
 
   if (balance.offchain.available === 0) {
-    console.log("No off-chain funds to offboard.");
+    console.log("No offchain funds to offboard.");
     return;
   }
 

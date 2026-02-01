@@ -1,11 +1,11 @@
 # @arkade-os/skill
 
-Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, on-chain via onboard/offboard, Lightning Network via Boltz, and swap USDC/USDT via LendaSwap.
+Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, onchain via onboard/offboard, Lightning Network via Boltz, and swap USDC/USDT via LendaSwap.
 
 ## Features
 
-- **Bitcoin on Arkade**: Instant off-chain Bitcoin transactions
-- **On-chain Payments**: Get paid on-chain (onboard) and pay on-chain (offboard)
+- **Bitcoin on Arkade**: Instant offchain Bitcoin transactions
+- **Onchain Payments**: Get paid onchain (onboard) and pay onchain (offboard)
 - **Lightning Network**: Pay and receive via Boltz submarine swaps
 - **Stablecoin Swaps**: Trade BTC for USDC/USDT on Polygon, Ethereum, Arbitrum
 - **CLI for Agents**: Command-line interface designed for MoltBot and other agents
@@ -75,7 +75,7 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 
 | Skill | Description |
 |-------|-------------|
-| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade off-chain, get paid on-chain (onboard), pay on-chain (offboard) |
+| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade offchain, get paid onchain (onboard), pay onchain (offboard) |
 | `ArkaLightningSkill` | Lightning payments via Boltz swaps |
 | `LendaSwapSkill` | USDC/USDT swaps via LendaSwap |
 
@@ -89,8 +89,8 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 | `balance` | Show balance breakdown |
 | `send <addr> <amt>` | Send sats |
 | `history` | Transaction history |
-| `onboard` | Get paid on-chain: convert received on-chain BTC to off-chain |
-| `offboard <addr>` | Pay on-chain: send off-chain BTC to an on-chain address |
+| `onboard` | Get paid onchain: convert received onchain BTC to offchain |
+| `offboard <addr>` | Pay onchain: send offchain BTC to an onchain address |
 | `ln-invoice <amt>` | Create Lightning invoice |
 | `ln-pay <bolt11>` | Pay Lightning invoice |
 | `ln-fees` | Show swap fees |

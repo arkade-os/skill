@@ -1,13 +1,13 @@
 ---
 name: arkade
-description: Send and receive Bitcoin over Arkade (off-chain), on-chain (via onboard/offboard), and Lightning. Swap USDC/USDT stablecoins.
+description: Send and receive Bitcoin over Arkade (offchain), onchain (via onboard/offboard), and Lightning. Swap USDC/USDT stablecoins.
 read_when:
   - user wants to send or receive Bitcoin
-  - user mentions Arkade, Ark, or off-chain Bitcoin
+  - user mentions Arkade, Ark, or offchain Bitcoin
   - user wants to use Lightning Network
   - user wants to swap BTC for stablecoins (USDC, USDT)
   - user wants to on-ramp or off-ramp Bitcoin
-  - user wants to get paid on-chain or pay someone on-chain
+  - user wants to get paid onchain or pay someone onchain
   - user mentions boarding address or VTXOs
   - user wants instant Bitcoin payments
 metadata:
@@ -19,12 +19,12 @@ metadata:
 
 # Arkade Skill
 
-Send and receive Bitcoin over Arkade (off-chain), on-chain (via onboard/offboard), and Lightning Network.
+Send and receive Bitcoin over Arkade (offchain), onchain (via onboard/offboard), and Lightning Network.
 Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 
 **Payment methods:**
-- **Off-chain (Arkade)**: Instant transactions between Arkade wallets
-- **On-chain**: Get paid on-chain via boarding address (onboard), pay on-chain via offboard
+- **Offchain (Arkade)**: Instant transactions between Arkade wallets
+- **Onchain**: Get paid onchain via boarding address (onboard), pay onchain via offboard
 - **Lightning**: Pay and receive via Boltz submarine swaps
 
 **Default Server:** https://arkade.computer
@@ -48,10 +48,10 @@ arkade init <private-key-hex>
 # Initialize with custom server
 arkade init <private-key-hex> https://custom-server.com
 
-# Show Ark address (for receiving off-chain Bitcoin)
+# Show Ark address (for receiving offchain Bitcoin)
 arkade address
 
-# Show boarding address (for on-chain deposits)
+# Show boarding address (for onchain deposits)
 arkade boarding-address
 
 # Show balance breakdown
@@ -71,19 +71,19 @@ arkade send ark1qxyz... 50000
 arkade history
 ```
 
-### On-chain Payments (Onboard/Offboard)
+### Onchain Payments (Onboard/Offboard)
 
 ```bash
-# Get paid on-chain: Receive BTC to your boarding address, then onboard to Arkade
+# Get paid onchain: Receive BTC to your boarding address, then onboard to Arkade
 # Step 1: Get your boarding address
 arkade boarding-address
 
 # Step 2: Have someone send BTC to your boarding address
 
-# Step 3: Onboard the received BTC to make it available off-chain
+# Step 3: Onboard the received BTC to make it available offchain
 arkade onboard
 
-# Pay on-chain: Send off-chain BTC to any on-chain Bitcoin address
+# Pay onchain: Send offchain BTC to any onchain Bitcoin address
 arkade offboard <btc-address>
 
 # Example: Pay someone at bc1 address
@@ -162,8 +162,8 @@ const boardingAddress = await bitcoin.getBoardingAddress();
 // Check balance
 const balance = await bitcoin.getBalance();
 console.log("Total:", balance.total, "sats");
-console.log("Off-chain available:", balance.offchain.available, "sats");
-console.log("On-chain pending:", balance.onchain.total, "sats");
+console.log("Offchain available:", balance.offchain.available, "sats");
+console.log("Onchain pending:", balance.onchain.total, "sats");
 
 // Send Bitcoin
 const result = await bitcoin.send({
@@ -222,13 +222,13 @@ console.log("Swap ID:", swap.swapId);
 
 ### ArkadeBitcoinSkill
 
-- `getArkAddress()` - Get Ark address for receiving off-chain payments
-- `getBoardingAddress()` - Get boarding address for receiving on-chain payments
+- `getArkAddress()` - Get Ark address for receiving offchain payments
+- `getBoardingAddress()` - Get boarding address for receiving onchain payments
 - `getBalance()` - Get balance breakdown
-- `send(params)` - Send Bitcoin to Ark address (off-chain)
+- `send(params)` - Send Bitcoin to Ark address (offchain)
 - `getTransactionHistory()` - Get transaction history
-- `onboard(params)` - Get paid on-chain: convert on-chain BTC to off-chain
-- `offboard(params)` - Pay on-chain: send off-chain BTC to any on-chain address
+- `onboard(params)` - Get paid onchain: convert onchain BTC to offchain
+- `offboard(params)` - Pay onchain: send offchain BTC to any onchain address
 - `waitForIncomingFunds(timeout?)` - Wait for incoming funds
 
 ### ArkaLightningSkill
