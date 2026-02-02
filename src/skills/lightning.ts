@@ -30,14 +30,15 @@ import type {
 
 /**
  * Default Boltz API URLs by network.
+ * Using Ark-specific Boltz endpoints for Arkade swaps.
  */
 const BOLTZ_API_URLS: Record<string, string> = {
-  bitcoin: "https://api.boltz.exchange",
-  mainnet: "https://api.boltz.exchange",
+  bitcoin: "https://api.ark.boltz.exchange",
+  mainnet: "https://api.ark.boltz.exchange",
   testnet: "https://testnet.boltz.exchange/api",
   signet: "https://testnet.boltz.exchange/api",
-  regtest: "http://localhost:9001",
-  mutinynet: "https://mutinynet.boltz.exchange/api",
+  regtest: "http://localhost:9069",
+  mutinynet: "https://api.boltz.mutinynet.arkade.sh",
 };
 
 /**
