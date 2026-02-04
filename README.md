@@ -14,6 +14,28 @@ Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade, 
 
 ## Installation
 
+### As an Agent Skill
+
+Install directly into your coding agent using the [Vercel Skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add arkade-os/skill
+```
+
+This discovers the `arkade` skill and installs it into supported agents (Claude Code, Cursor, etc.).
+
+You can also target a specific agent or install globally:
+
+```bash
+# Install to a specific agent
+npx skills add arkade-os/skill --agent claude-code
+
+# Install globally (user-level)
+npx skills add arkade-os/skill -g
+```
+
+### As an npm Package
+
 ```bash
 npm install @arkade-os/skill
 # or
