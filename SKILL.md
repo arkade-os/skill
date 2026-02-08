@@ -303,4 +303,4 @@ Arkade supports multiple networks:
 ## Support
 
 - GitHub: https://github.com/arkade-os/skill
-- Documentation: https://docs.arkade.computer
+- Documentation: https://docs.arkadeos.com
