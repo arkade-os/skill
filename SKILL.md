@@ -27,6 +27,21 @@ Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 
 **Default Server:** https://arkade.computer
 
+## Agent Safety Rules
+
+**IMPORTANT: The following commands move real funds. The agent MUST always ask the user for explicit confirmation before executing them, displaying the amount and destination:**
+
+- `send` — sends sats to an Ark address
+- `offboard` — moves offchain BTC to an onchain Bitcoin address
+- `onboard` — moves onchain BTC into Arkade
+- `ln-pay` — pays a Lightning invoice
+- `swap-to-stable` / `swap-to-btc` — executes a stablecoin swap
+- `swap-claim` / `swap-refund` — claims or refunds a swap
+
+Read-only commands (`address`, `balance`, `history`, `ln-invoice`, `ln-fees`, `ln-limits`, `ln-pending`, `swap-quote`, `swap-pairs`, `swap-status`, `swap-pending`, `boarding-address`) are safe to run without confirmation.
+
+**Wallet initialization:** `init` creates a new private key stored at `~/.arkade-wallet/config.json` (permissions `0600`). The agent should inform the user before first initialization.
+
 ## Installation
 
 ### Quick Start (no install required)
