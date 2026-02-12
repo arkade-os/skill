@@ -45,6 +45,7 @@
         "rimraf": "^6.0.0",
         "typescript": "^5.9.0"
     },
+    "skill": {},
     "keywords": [
         "bitcoin",
         "arkade",
