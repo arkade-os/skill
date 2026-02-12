@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@lendasat/lendaswap-sdk-pure@0.0.2':
+    hash: 92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f
+    path: patches/@lendasat__lendaswap-sdk-pure@0.0.2.patch
+
 importers:
 
   .:
@@ -16,7 +21,7 @@ importers:
         version: 0.3.12
       '@lendasat/lendaswap-sdk-pure':
         specifier: ^0.0.2
-        version: 0.0.2
+        version: 0.0.2(patch_hash=92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -316,7 +321,7 @@ snapshots:
     dependencies:
       '@isaacs/balanced-match': 4.0.1
 
-  '@lendasat/lendaswap-sdk-pure@0.0.2':
+  '@lendasat/lendaswap-sdk-pure@0.0.2(patch_hash=92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f)':
     dependencies:
       '@arkade-os/sdk': 0.3.12
       '@noble/hashes': 1.8.0

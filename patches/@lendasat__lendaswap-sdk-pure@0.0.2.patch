@@ -1,0 +1,35 @@
+diff --git a/dist/client.js b/dist/client.js
+index e93ad4501f6b530e4c2b3d59535f8c2ec75883a1..6994a89eb275c8555c364188e242ea79761949b7 100644
+--- a/dist/client.js
++++ b/dist/client.js
+@@ -6,7 +6,7 @@ import { encodeApproveCallData, encodeRefundSwapCallData, } from "./evm/index.js
+ import { buildArkadeClaim, claim as redeemClaim, } from "./redeem/index.js";
+ import { buildArkadeRefund, buildOnchainRefundTransaction, verifyHtlcAddress, } from "./refund/index.js";
+ import { bytesToHex, Signer } from "./signer/index.js";
+-import { SWAP_STORAGE_VERSION, } from "./storage";
++import { SWAP_STORAGE_VERSION, } from "./storage/index.js";
+ const DEFAULT_BASE_URL = "https://apilendaswap.lendasat.com/";
+ /** Default Esplora URLs by network */
+ const DEFAULT_ESPLORA_URLS = {
+diff --git a/dist/index.js b/dist/index.js
+index b4e85642deb8c283a9e5454155b64acb3430ca6f..b9149f6024f538e7a47f5cbbda36e946b9102e94 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -7,8 +7,8 @@ export { getVhtlcAmounts, } from "./arkade.js";
+ export { Client, ClientBuilder } from "./client.js";
+ // EVM HTLC utilities
+ export { buildEvmHtlcCallData, encodeApproveCallData, encodeCreateSwapCallData, } from "./evm/index.js";
+-export { calculateSourceAmount, calculateTargetAmount, computeExchangeRate, selectTierRate, } from "./price-calculations";
+-export { PriceFeedService, } from "./price-feed";
++export { calculateSourceAmount, calculateTargetAmount, computeExchangeRate, selectTierRate, } from "./price-calculations.js";
++export { PriceFeedService, } from "./price-feed.js";
+ // Redeem module (Arkade claim)
+ export { buildArkadeClaim, } from "./redeem/index.js";
+ // Refund module
+@@ -21,5 +21,5 @@ export { IdbSwapStorage, IdbWalletStorage, idbStorageFactory, } from "./storage/
+ export { InMemorySwapStorage, InMemoryWalletStorage, inMemoryStorageFactory, SWAP_STORAGE_VERSION, } from "./storage/index.js";
+ // Token helpers and constants
+ export { BTC_ARKADE, BTC_LIGHTNING, BTC_ONCHAIN, isArbitrumToken, isArkade, isBtc, isBtcOnchain, isEthereumToken, isEvmToken, isLightning, isPolygonToken, networkName, } from "./tokens.js";
+-export { getUsdPrices } from "./usd-price";
++export { getUsdPrices } from "./usd-price.js";
+ //# sourceMappingURL=index.js.map
