@@ -469,6 +469,8 @@ export interface StablecoinSwapResult {
     /** Call data for EVM transactions (if applicable) */
     callData?: string;
   };
+  /** Transaction ID of the VHTL funding (for Arkade-to-EVM swaps) */
+  fundingTxid?: string;
 }
 
 /**

@@ -616,8 +616,8 @@ async function cmdLnPending() {
 }
 
 /**
- * Create a LendaSwapSkill with mnemonic persistence.
- * Loads mnemonic from config, and saves it back after first initialization.
+ * Create a LendaSwapSkill with SQLite persistence for swaps and wallet data.
+ * Stores data in ~/.arkade-wallet/lendaswap.db
  */
 async function createLendaSwap() {
   const wallet = await createWallet();
@@ -635,6 +635,19 @@ async function createLendaSwap() {
   }
   if (process.env.LENDASWAP_API_URL) {
     options.apiUrl = process.env.LENDASWAP_API_URL;
+  }
+
+  // Use SQLite storage for swap and wallet persistence across sessions
+  try {
+    const { SqliteWalletStorage, SqliteSwapStorage } = await import(
+      "@lendasat/lendaswap-sdk-pure/node"
+    );
+    const dbPath = join(CONFIG_DIR, "lendaswap.db");
+    options.walletStorage = new SqliteWalletStorage(dbPath);
+    options.swapStorage = new SqliteSwapStorage(dbPath);
+  } catch {
+    // Fallback to in-memory if SQLite is not available
+    console.error("Warning: SQLite not available, swaps will not be persisted.");
   }
 
   const lendaswap = new LendaSwapSkill({ wallet, ...options });
@@ -734,12 +747,15 @@ async function cmdSwapToStable(
       targetAddress,
     });
 
-    console.log("Swap created!");
+    console.log("Swap created and funded!");
     console.log(`Swap ID: ${result.swapId}`);
     console.log(`Status: ${result.status}`);
     console.log(`Expected: ${result.targetAmount} ${targetToken}`);
+    if (result.fundingTxid) {
+      console.log(`Funding TX: ${result.fundingTxid}`);
+    }
     if (result.paymentDetails?.address) {
-      console.log(`Payment Address: ${result.paymentDetails.address}`);
+      console.log(`VHTLC Address: ${result.paymentDetails.address}`);
     }
     console.log(`Fee: ${result.fee.amount} sats`);
     console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
