@@ -108,14 +108,14 @@ async function autoInit(serverUrl) {
 }
 
 /**
- * Create wallet from config, auto-initializing if needed.
+ * Create wallet from existing config.
+ * Exits with an error if no wallet has been initialized.
  */
 async function createWallet() {
-  let config = loadConfig();
+  const config = loadConfig();
   if (!config) {
-    console.error("No wallet found. Auto-generating a new private key...");
-    config = await autoInit();
-    console.error("Wallet initialized. Config saved to ~/.arkade-wallet/config.json");
+    console.error("Error: No wallet found. Run 'arkade init' first.");
+    process.exit(1);
   }
 
   const { sdk } = await getSDK();

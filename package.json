@@ -46,7 +46,12 @@
         "rimraf": "^6.0.0",
         "typescript": "^5.9.0"
     },
-    "skill": {},
+    "skill": {
+        "configPaths": [
+            "~/.arkade-wallet/config.json",
+            "~/.arkade-wallet/lendaswap.db"
+        ]
+    },
     "keywords": [
         "bitcoin",
         "arkade",

@@ -40,7 +40,7 @@ Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 
 Read-only commands (`address`, `balance`, `history`, `ln-invoice`, `ln-fees`, `ln-limits`, `ln-pending`, `swap-quote`, `swap-pairs`, `swap-status`, `swap-pending`, `boarding-address`) are safe to run without confirmation.
 
-**Wallet initialization:** `init` creates a new private key stored at `~/.arkade-wallet/config.json` (permissions `0600`). The agent should inform the user before first initialization.
+**Wallet initialization:** `init` creates a new private key stored at `~/.arkade-wallet/config.json` (permissions `0600`). All other commands require `init` to have been run first. The agent MUST inform the user and get confirmation before running `init` for the first time.
 
 ## Installation
 
