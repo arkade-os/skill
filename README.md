@@ -8,7 +8,7 @@ Arkade skills for agent integration - send and receive Bitcoin over Arkade, onch
 - **Onchain Payments**: Get paid onchain (onboard) and pay onchain (offboard)
 - **Lightning Network**: Pay and receive via Boltz submarine swaps
 - **Stablecoin Swaps**: Trade BTC for USDC/USDT on Polygon, Ethereum, Arbitrum
-- **CLI for Agents**: Command-line interface designed for MoltBot and other agents
+- **CLI for Agents**: Command-line interface designed for AI agent integration
 
 **Default Server:** https://arkade.computer
 
@@ -47,8 +47,11 @@ pnpm add @arkade-os/skill
 ### CLI Usage
 
 ```bash
-# Initialize wallet
-arkade init <private-key-hex>
+# Initialize wallet (auto-generates private key, default server: arkade.computer)
+arkade init
+
+# Initialize with custom server
+arkade init https://custom-server.com
 
 # Check balance
 arkade balance
@@ -105,7 +108,7 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 
 | Command | Description |
 |---------|-------------|
-| `init <key> [url]` | Initialize wallet |
+| `init [url]` | Initialize wallet (auto-generates key) |
 | `address` | Show Ark address |
 | `boarding-address` | Show boarding address |
 | `balance` | Show balance breakdown |
@@ -117,9 +120,13 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 | `ln-pay <bolt11>` | Pay Lightning invoice |
 | `ln-fees` | Show swap fees |
 | `ln-limits` | Show swap limits |
+| `ln-pending` | Show pending Lightning swaps |
 | `swap-quote <amt> <from> <to>` | Get stablecoin quote |
 | `swap-to-stable <amt> <token> <chain> <addr>` | Swap BTC to stablecoin |
 | `swap-to-btc <amt> <token> <chain> <addr>` | Swap stablecoin to BTC |
+| `swap-claim <id>` | Claim a completed swap |
+| `swap-refund <id> [addr]` | Refund an expired BTC→EVM swap |
+| `swap-evm-refund <id>` | Get EVM refund call data for EVM→BTC swaps |
 | `swap-status <id>` | Check swap status |
 | `swap-pending` | Show pending swaps |
 | `swap-pairs` | Show trading pairs |

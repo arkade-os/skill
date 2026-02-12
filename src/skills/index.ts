@@ -111,5 +111,8 @@ export {
 export {
   LendaSwapSkill,
   createLendaSwapSkill,
+  mapSwapStatus,
+  isTerminalStatus,
+  TOKEN_DECIMALS,
   type LendaSwapSkillConfig,
 } from "./lendaswap";

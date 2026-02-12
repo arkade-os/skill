@@ -2,7 +2,7 @@
  * ArkadeBitcoinSkill - Send and receive Bitcoin over Arkade protocol.
  *
  * This skill provides a unified interface for Bitcoin operations
- * designed for agent integration (CLI-friendly for agents like MoltBot).
+ * designed for AI agent integration.
  *
  * @module skills/arkadeBitcoin
  */
