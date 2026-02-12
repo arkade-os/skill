@@ -427,12 +427,28 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
     options?: { destinationAddress?: string },
   ): Promise<RefundSwapResult> {
     const client = await this.getClient();
+    const data = await client.getSwap(swapId, { updateStorage: true });
 
-    const refundOptions = options?.destinationAddress
-      ? { destinationAddress: options.destinationAddress }
-      : undefined;
+    // For EVM→BTC swaps, the refund happens on the EVM side
+    if (data.direction === "evm_to_btc") {
+      return {
+        success: false,
+        message:
+          "This is an EVM→BTC swap. Use getEvmRefundCallData() to get the EVM refund transaction data.",
+      };
+    }
 
-    const result = await client.refundSwap(swapId, refundOptions);
+    // Auto-derive destination address if not provided
+    let destinationAddress = options?.destinationAddress;
+    if (!destinationAddress) {
+      if (data.source_token === "btc_arkade") {
+        destinationAddress = await this.wallet.getAddress();
+      } else {
+        destinationAddress = await this.wallet.getBoardingAddress();
+      }
+    }
+
+    const result = await client.refundSwap(swapId, { destinationAddress });
 
     return {
       success: result.success,

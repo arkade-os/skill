@@ -36,9 +36,14 @@ Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 - `onboard` — moves onchain BTC into Arkade
 - `ln-pay` — pays a Lightning invoice
 - `swap-to-stable` / `swap-to-btc` — executes a stablecoin swap
-- `swap-claim` / `swap-refund` — claims or refunds a swap
+- `swap-claim` / `swap-refund` / `swap-evm-refund` — claims or refunds a swap
 
-Read-only commands (`address`, `balance`, `history`, `ln-invoice`, `ln-fees`, `ln-limits`, `ln-pending`, `swap-quote`, `swap-pairs`, `swap-status`, `swap-pending`, `boarding-address`) are safe to run without confirmation.
+Read-only commands (`address`, `balance`, `history`, `ln-invoice`, `ln-fees`, `ln-limits`, `ln-pending`, `swap-quote`, `swap-pairs`, `swap-status`, `swap-pending`, `swap-evm-refund`, `boarding-address`) are safe to run without confirmation.
+
+**Refund behavior:**
+
+- **BTC→EVM swaps** (`swap-refund`): Refunds BTC back to your Ark address (or a custom address). The destination defaults to your Ark address if not specified.
+- **EVM→BTC swaps** (`swap-evm-refund`): Returns the EVM contract call data needed to refund locked EVM tokens. The user must execute this transaction from their EVM wallet.
 
 **Wallet initialization:** `init` creates a new private key stored at `~/.arkade-wallet/config.json` (permissions `0600`). All other commands require `init` to have been run first. The agent MUST inform the user and get confirmation before running `init` for the first time.
 
@@ -167,6 +172,12 @@ arkade swap-quote 100000 btc_arkade usdc_pol
 
 # Show available trading pairs
 arkade swap-pairs
+
+# Refund a BTC→EVM swap (defaults to your Ark address)
+arkade swap-refund <swap-id> [destination-address]
+
+# Get EVM refund call data for an EVM→BTC swap
+arkade swap-evm-refund <swap-id>
 ```
 
 **Supported Tokens:**

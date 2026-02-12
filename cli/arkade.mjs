@@ -172,7 +172,8 @@ COMMANDS:
   swap-to-btc <amt> <token> <chain> <evm-addr>
                                 Swap stablecoin to BTC
   swap-claim <swap-id>          Claim a completed swap
-  swap-refund <swap-id> [addr]  Refund an expired/failed swap
+  swap-refund <swap-id> [addr]  Refund an expired/failed BTC swap
+  swap-evm-refund <swap-id>     Get EVM refund call data (for EVM→BTC swaps)
   swap-status <swap-id>         Check swap status
   swap-pending                  Show pending stablecoin swaps
   swap-pairs                    Show available stablecoin pairs
@@ -972,6 +973,47 @@ async function cmdSwapRefund(swapId, destinationAddress) {
 }
 
 /**
+ * Get EVM refund call data for an EVM→BTC swap.
+ */
+async function cmdSwapEvmRefund(swapId) {
+  if (!swapId) {
+    console.error("Error: Swap ID required.");
+    console.error("Usage: arkade swap-evm-refund <swap-id>");
+    process.exit(1);
+  }
+
+  const lendaswap = await createLendaSwap();
+
+  try {
+    const data = await lendaswap.getEvmRefundCallData(swapId);
+
+    console.log("EVM Refund Call Data:");
+    console.log("---------------------");
+    console.log(`Contract: ${data.to}`);
+    console.log(`Call Data: ${data.data}`);
+    console.log(`Timelock Expired: ${data.timelockExpired}`);
+    console.log(
+      `Timelock Expiry: ${new Date(data.timelockExpiry * 1000).toLocaleString()}`,
+    );
+
+    if (!data.timelockExpired) {
+      console.log("");
+      console.log(
+        `Note: Refund not yet available. Timelock expires at ${new Date(data.timelockExpiry * 1000).toLocaleString()}.`,
+      );
+    } else {
+      console.log("");
+      console.log(
+        "Send a transaction to the contract above with the provided call data to refund your EVM tokens.",
+      );
+    }
+  } catch (e) {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+/**
  * Main entry point.
  */
 async function main() {
@@ -1032,6 +1074,9 @@ async function main() {
       break;
     case "swap-refund":
       await cmdSwapRefund(args[1], args[2]);
+      break;
+    case "swap-evm-refund":
+      await cmdSwapEvmRefund(args[1]);
       break;
     case "swap-status":
       await cmdSwapStatus(args[1]);
