@@ -761,9 +761,11 @@ async function createLendaSwap() {
     options.swapStorage = new SqliteSwapStorage(dbPath);
   } catch {
     // Fallback to in-memory if SQLite is not available
-    console.error(
-      "Warning: SQLite not available, swaps will not be persisted.",
-    );
+    if (!jsonOutput) {
+      console.error(
+        "Warning: SQLite not available, swaps will not be persisted.",
+      );
+    }
   }
 
   const lendaswap = new LendaSwapSkill({ wallet, ...options });
