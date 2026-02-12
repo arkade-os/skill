@@ -244,7 +244,11 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
     sourceToken: StablecoinToken,
   ): Promise<StablecoinQuote> {
     const client = await this.getClient();
-    const quote = await client.getQuote(sourceToken, "btc_arkade", sourceAmount);
+    const quote = await client.getQuote(
+      sourceToken,
+      "btc_arkade",
+      sourceAmount,
+    );
 
     const rate = parseFloat(quote.exchange_rate);
     const grossSats = (sourceAmount / rate) * 1e8;
@@ -280,21 +284,29 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
 
     const resp = result.response;
 
-    // Auto-fund the VHTL by sending BTC from the Arkade wallet
+    // Auto-fund the VHTLC by sending BTC from the Arkade wallet
     const fundingTxid = await this.wallet.sendBitcoin({
       address: resp.htlc_address_arkade,
       amount: resp.source_amount,
     });
+
+    const exchangeRate =
+      resp.source_amount > 0 && resp.target_amount > 0
+        ? resp.target_amount / (resp.source_amount / 1e8)
+        : 0;
 
     return {
       swapId: resp.id,
       status: "funded",
       sourceAmount: resp.source_amount,
       targetAmount: resp.target_amount,
-      exchangeRate: 0,
+      exchangeRate,
       fee: {
         amount: resp.fee_sats,
-        percentage: 0,
+        percentage:
+          resp.source_amount > 0
+            ? (resp.fee_sats / resp.source_amount) * 100
+            : 0,
       },
       expiresAt: new Date(resp.vhtlc_refund_locktime * 1000),
       paymentDetails: {
@@ -308,8 +320,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
     params: StablecoinToBtcParams,
   ): Promise<StablecoinSwapResult> {
     const client = await this.getClient();
-    const arkAddress =
-      params.targetAddress || (await this.wallet.getAddress());
+    const arkAddress = params.targetAddress || (await this.wallet.getAddress());
 
     const result = await client.createEvmToArkadeSwap({
       sourceChain: params.sourceChain,
@@ -322,15 +333,23 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
 
     const resp = result.response;
 
+    const exchangeRate =
+      resp.source_amount > 0 && resp.target_amount > 0
+        ? (resp.source_amount / resp.target_amount) * 1e8
+        : 0;
+
     return {
       swapId: resp.id,
       status: mapSwapStatus(resp.status),
       sourceAmount: resp.source_amount,
       targetAmount: resp.target_amount,
-      exchangeRate: 0,
+      exchangeRate,
       fee: {
         amount: resp.fee_sats,
-        percentage: 0,
+        percentage:
+          resp.source_amount > 0
+            ? (resp.fee_sats / resp.target_amount) * 100
+            : 0,
       },
       expiresAt: new Date(resp.evm_refund_locktime * 1000),
       paymentDetails: {
@@ -351,6 +370,13 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
 
     const status = mapSwapStatus(data.status);
 
+    const exchangeRate =
+      data.source_amount > 0 && data.target_amount > 0
+        ? direction === "btc_to_stablecoin"
+          ? data.target_amount / (data.source_amount / 1e8)
+          : (data.source_amount / data.target_amount) * 1e8
+        : 0;
+
     return {
       id: swapId,
       direction,
@@ -359,7 +385,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
       targetToken: data.target_token,
       sourceAmount: data.source_amount,
       targetAmount: data.target_amount,
-      exchangeRate: 0,
+      exchangeRate,
       createdAt: new Date(data.created_at),
       completedAt: status === "completed" ? new Date() : undefined,
       txid:
@@ -401,13 +427,22 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
     const client = await this.getClient();
     const pairs = await client.getAssetPairs();
 
-    return pairs.map((pair) => ({
-      from: pair.source.token_id,
-      to: pair.target.token_id,
-      minAmount: 0,
-      maxAmount: 0,
-      feePercentage: 0,
-    }));
+    // SDK types don't include min_amount/max_amount/fee_rate yet,
+    // but the API returns them. Cast to access runtime properties.
+    return pairs.map((pair) => {
+      const p = pair as typeof pair & {
+        min_amount?: number;
+        max_amount?: number;
+        fee_rate?: number;
+      };
+      return {
+        from: p.source.token_id,
+        to: p.target.token_id,
+        minAmount: p.min_amount ?? 0,
+        maxAmount: p.max_amount ?? 0,
+        feePercentage: p.fee_rate != null ? p.fee_rate * 100 : 0,
+      };
+    });
   }
 
   async claimSwap(swapId: string): Promise<ClaimSwapResult> {
@@ -519,6 +554,12 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
         : ("btc_to_stablecoin" as const);
 
     const status = mapSwapStatus(resp.status);
+    const exchangeRate =
+      resp.source_amount > 0 && resp.target_amount > 0
+        ? direction === "btc_to_stablecoin"
+          ? resp.target_amount / (resp.source_amount / 1e8)
+          : (resp.source_amount / resp.target_amount) * 1e8
+        : 0;
 
     return {
       id: stored.swapId,
@@ -528,7 +569,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
       targetToken: resp.target_token,
       sourceAmount: resp.source_amount,
       targetAmount: resp.target_amount,
-      exchangeRate: 0,
+      exchangeRate,
       createdAt: new Date(resp.created_at),
       completedAt: status === "completed" ? new Date() : undefined,
     };

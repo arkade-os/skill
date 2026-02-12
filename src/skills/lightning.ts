@@ -2,7 +2,7 @@
  * ArkaLightningSkill - Lightning Network payments via Boltz submarine swaps.
  *
  * This skill provides Lightning Network capabilities for Arkade wallets
- * designed for agent integration (CLI-friendly for agents like MoltBot).
+ * designed for AI agent integration.
  *
  * @module skills/lightning
  */
@@ -129,10 +129,10 @@ export class ArkaLightningSkill implements LightningSkill {
       referralId: config.referralId,
     });
 
-    // Cast wallet to any since boltz-swap expects Wallet from @arkade-os/sdk
-    // but we have the local Wallet type - they are structurally identical
     this.arkadeLightning = new ArkadeLightning({
-      wallet: config.wallet as any,
+      wallet: config.wallet as ConstructorParameters<
+        typeof ArkadeLightning
+      >[0]["wallet"],
       swapProvider: this.swapProvider,
       arkProvider: config.arkProvider,
       indexerProvider: config.indexerProvider,

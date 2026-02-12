@@ -3,7 +3,7 @@
 /**
  * Arkade CLI - Command-line interface for Arkade wallet operations.
  *
- * This CLI is designed for agent integration (CLI-friendly for agents like MoltBot).
+ * This CLI is designed for AI agent integration.
  * Data is stored in ~/.arkade-wallet/config.json
  * Private keys are auto-generated and stored locally — never exposed via CLI args.
  *
@@ -28,7 +28,13 @@
  *   arkade help                       # Show help
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -68,12 +74,10 @@ async function getSDK() {
   try {
     const sdk = await import("@arkade-os/sdk");
     // Import skills directly (ESM requires explicit .js extensions)
-    const { ArkadeBitcoinSkill } = await import(
-      "../dist/esm/skills/arkadeBitcoin.js"
-    );
-    const { ArkaLightningSkill } = await import(
-      "../dist/esm/skills/lightning.js"
-    );
+    const { ArkadeBitcoinSkill } =
+      await import("../dist/esm/skills/arkadeBitcoin.js");
+    const { ArkaLightningSkill } =
+      await import("../dist/esm/skills/lightning.js");
     const { LendaSwapSkill } = await import("../dist/esm/skills/lendaswap.js");
     return {
       sdk,
@@ -640,15 +644,16 @@ async function createLendaSwap() {
 
   // Use SQLite storage for swap and wallet persistence across sessions
   try {
-    const { SqliteWalletStorage, SqliteSwapStorage } = await import(
-      "@lendasat/lendaswap-sdk-pure/node"
-    );
+    const { SqliteWalletStorage, SqliteSwapStorage } =
+      await import("@lendasat/lendaswap-sdk-pure/node");
     const dbPath = join(CONFIG_DIR, "lendaswap.db");
     options.walletStorage = new SqliteWalletStorage(dbPath);
     options.swapStorage = new SqliteSwapStorage(dbPath);
   } catch {
     // Fallback to in-memory if SQLite is not available
-    console.error("Warning: SQLite not available, swaps will not be persisted.");
+    console.error(
+      "Warning: SQLite not available, swaps will not be persisted.",
+    );
   }
 
   const lendaswap = new LendaSwapSkill({ wallet, ...options });
