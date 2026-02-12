@@ -10,11 +10,9 @@ read_when:
   - user wants to get paid onchain or pay someone onchain
   - user mentions boarding address or VTXOs
   - user wants instant Bitcoin payments
+requires: []
 metadata:
   emoji: "₿"
-  requires:
-    - private key (64 hex characters)
-    - LENDASWAP_API_KEY (for stablecoin swaps)
 ---
 
 # Arkade Skill
@@ -35,13 +33,11 @@ Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
 
 ```bash
 # Using pnpm (recommended)
-pnpm dlx @arkade-os/skill generate
-pnpm dlx @arkade-os/skill init <private-key-hex>
+pnpm dlx @arkade-os/skill init
 pnpm dlx @arkade-os/skill address
 
 # Using npx
-npx -y -p @arkade-os/skill arkade generate
-npx -y -p @arkade-os/skill arkade init <private-key-hex>
+npx -y -p @arkade-os/skill arkade init
 npx -y -p @arkade-os/skill arkade address
 ```
 
@@ -54,8 +50,7 @@ npm install -g @arkade-os/skill
 pnpm add -g @arkade-os/skill
 
 # Then use directly
-arkade generate
-arkade init <private-key-hex>
+arkade init
 arkade address
 ```
 
@@ -76,14 +71,11 @@ pnpm add @arkade-os/skill
 ### Wallet Management
 
 ```bash
-# Generate a new random private key
-arkade generate
-
-# Initialize wallet with private key (default server: arkade.computer)
-arkade init <private-key-hex>
+# Initialize wallet (auto-generates private key, default server: arkade.computer)
+arkade init
 
 # Initialize with custom server
-arkade init <private-key-hex> https://custom-server.com
+arkade init https://custom-server.com
 
 # Show Ark address (for receiving offchain Bitcoin)
 arkade address
@@ -150,8 +142,6 @@ arkade ln-pending
 ```
 
 ### Stablecoin Swaps (LendaSwap)
-
-Requires `LENDASWAP_API_KEY` environment variable.
 
 ```bash
 # Get quote for BTC to stablecoin swap
@@ -229,10 +219,7 @@ const payment = await lightning.payInvoice({
 console.log("Paid! Preimage:", payment.preimage);
 
 // === Stablecoin Swaps ===
-const lendaswap = new LendaSwapSkill({
-  wallet,
-  apiKey: process.env.LENDASWAP_API_KEY,
-});
+const lendaswap = new LendaSwapSkill({ wallet });
 
 // Get quote
 const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
@@ -252,8 +239,7 @@ console.log("Swap ID:", swap.swapId);
 
 **Data Storage:** `~/.arkade-wallet/config.json`
 
-**Environment Variables:**
-- `LENDASWAP_API_KEY` - Required for stablecoin swaps
+Private keys are auto-generated on first use and stored locally. They are never exposed via CLI arguments or stdout. No environment variables required. The LendaSwap API is publicly accessible.
 
 ## Skill Interfaces
 

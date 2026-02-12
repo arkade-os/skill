@@ -61,8 +61,8 @@ function parseExpiry(raw: unknown, fallbackMs: number): Date {
 export interface LendaSwapSkillConfig {
   /** The Arkade wallet to use */
   wallet: Wallet;
-  /** LendaSwap API key */
-  apiKey: string;
+  /** Optional API key (LendaSwap API is publicly accessible) */
+  apiKey?: string;
   /** Optional custom API URL (default: https://apilendaswap.lendasat.com/) */
   apiUrl?: string;
   /** Optional Esplora URL for Bitcoin queries */
@@ -111,10 +111,7 @@ interface StoredSwap {
  * });
  *
  * // Create the LendaSwap skill
- * const lendaswap = new LendaSwapSkill({
- *   wallet,
- *   apiKey: process.env.LENDASWAP_API_KEY,
- * });
+ * const lendaswap = new LendaSwapSkill({ wallet });
  *
  * // Get a quote for BTC to USDC
  * const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
@@ -138,7 +135,7 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
 
   private readonly wallet: Wallet;
   private readonly apiUrl: string;
-  private readonly apiKey: string;
+  private readonly apiKey?: string;
   private readonly referralCode?: string;
   private readonly swapStorage: Map<string, StoredSwap> = new Map();
 
@@ -553,33 +550,36 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
   ): Promise<Response> {
     const url = `${this.apiUrl.replace(/\/$/, "")}${path}`;
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.apiKey) {
+      headers["X-API-Key"] = this.apiKey;
+    }
+
     return fetch(url, {
       ...options,
       headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": this.apiKey,
-        ...options.headers,
+        ...headers,
+        ...(options.headers as Record<string, string>),
       },
     });
   }
 }
 
 /**
- * Create a LendaSwapSkill from a wallet and API key.
+ * Create a LendaSwapSkill from a wallet.
  *
  * @param wallet - The Arkade wallet to use
- * @param apiKey - LendaSwap API key
  * @param options - Optional configuration
  * @returns A new LendaSwapSkill instance
  */
 export function createLendaSwapSkill(
   wallet: Wallet,
-  apiKey: string,
-  options?: Partial<Omit<LendaSwapSkillConfig, "wallet" | "apiKey">>,
+  options?: Partial<Omit<LendaSwapSkillConfig, "wallet">>,
 ): LendaSwapSkill {
   return new LendaSwapSkill({
     wallet,
-    apiKey,
     ...options,
   });
 }

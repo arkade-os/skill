@@ -48,10 +48,7 @@
  * console.log("Invoice:", invoice.bolt11);
  *
  * // === LendaSwap Skill ===
- * const lendaswap = new LendaSwapSkill({
- *   wallet,
- *   apiKey: process.env.LENDASWAP_API_KEY,
- * });
+ * const lendaswap = new LendaSwapSkill({ wallet });
  *
  * // Get quote for BTC to USDC
  * const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");

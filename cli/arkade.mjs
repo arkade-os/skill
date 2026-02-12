@@ -5,12 +5,12 @@
  *
  * This CLI is designed for agent integration (CLI-friendly for agents like MoltBot).
  * Data is stored in ~/.arkade-wallet/config.json
+ * Private keys are auto-generated and stored locally — never exposed via CLI args.
  *
  * Default server: https://arkade.computer
  *
  * Usage:
- *   arkade generate                   # Generate random private key
- *   arkade init <key> [url]           # Initialize wallet
+ *   arkade init [url]                 # Initialize wallet (auto-generates key)
  *   arkade address                    # Show Ark address
  *   arkade boarding-address           # Show boarding address
  *   arkade balance                    # Show balance breakdown
@@ -28,7 +28,7 @@
  *   arkade help                       # Show help
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -55,9 +55,10 @@ function loadConfig() {
  */
 function saveConfig(config) {
   if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
   writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  chmodSync(CONFIG_FILE, 0o600);
 }
 
 /**
@@ -86,15 +87,35 @@ async function getSDK() {
 }
 
 /**
- * Create wallet from config.
+ * Auto-initialize wallet config by generating a new private key.
+ */
+async function autoInit(serverUrl) {
+  const { sdk } = await getSDK();
+  const { SingleKey } = sdk;
+
+  const identity = SingleKey.fromRandomBytes();
+  const privateKey = Buffer.from(identity.key).toString("hex");
+  const url = serverUrl || DEFAULT_SERVER;
+
+  const config = {
+    privateKey,
+    serverUrl: url,
+    createdAt: new Date().toISOString(),
+  };
+
+  saveConfig(config);
+  return config;
+}
+
+/**
+ * Create wallet from config, auto-initializing if needed.
  */
 async function createWallet() {
-  const config = loadConfig();
+  let config = loadConfig();
   if (!config) {
-    console.error(
-      "Error: Wallet not initialized. Run 'arkade init <key>' first.",
-    );
-    process.exit(1);
+    console.error("No wallet found. Auto-generating a new private key...");
+    config = await autoInit();
+    console.error("Wallet initialized. Config saved to ~/.arkade-wallet/config.json");
   }
 
   const { sdk } = await getSDK();
@@ -126,41 +147,39 @@ USAGE:
   arkade <command> [options]
 
 COMMANDS:
-  generate                   Generate a new random private key
-  init <key> [url]           Initialize wallet with private key (hex)
-                             Default server: arkade.computer
+  init [url]                   Initialize wallet (auto-generates key)
+                               Default server: arkade.computer
 
-  address                    Show Ark address (for receiving offchain)
-  boarding-address           Show boarding address (for onchain deposits)
-  balance                    Show balance breakdown
+  address                      Show Ark address (for receiving offchain)
+  boarding-address             Show boarding address (for onchain deposits)
+  balance                      Show balance breakdown
 
-  send <address> <amount>    Send satoshis to an Ark address
-  history                    Show transaction history
+  send <address> <amount>      Send satoshis to an Ark address
+  history                      Show transaction history
 
-  onboard                    Move funds from onchain to offchain (Arkade)
-  offboard <btc-address>     Move funds from offchain to onchain
+  onboard                      Move funds from onchain to offchain (Arkade)
+  offboard <btc-address>       Move funds from offchain to onchain
 
-  ln-invoice <amount> [desc] Create a Lightning invoice
-  ln-pay <bolt11>            Pay a Lightning invoice
-  ln-fees                    Show Lightning swap fees
-  ln-limits                  Show Lightning swap limits
-  ln-pending                 Show pending Lightning swaps
+  ln-invoice <amount> [desc]   Create a Lightning invoice
+  ln-pay <bolt11>              Pay a Lightning invoice
+  ln-fees                      Show Lightning swap fees
+  ln-limits                    Show Lightning swap limits
+  ln-pending                   Show pending Lightning swaps
 
   swap-quote <amt> <from> <to>  Get stablecoin swap quote
   swap-to-stable <amt> <token> <chain> <evm-addr>
-                               Swap BTC to stablecoin
+                                Swap BTC to stablecoin
   swap-to-btc <amt> <token> <chain> <evm-addr>
-                               Swap stablecoin to BTC
-  swap-status <swap-id>        Check swap status
-  swap-pending                 Show pending stablecoin swaps
-  swap-pairs                   Show available stablecoin pairs
+                                Swap stablecoin to BTC
+  swap-status <swap-id>         Check swap status
+  swap-pending                  Show pending stablecoin swaps
+  swap-pairs                    Show available stablecoin pairs
 
-  help                         Show this help message
+  help                          Show this help message
 
 EXAMPLES:
-  arkade generate
-  arkade init abc123...
-  arkade init abc123... https://custom-server.com
+  arkade init
+  arkade init https://custom-server.com
   arkade balance
   arkade send ark1... 50000
   arkade ln-invoice 25000 "Coffee payment"
@@ -168,70 +187,49 @@ EXAMPLES:
   arkade swap-to-stable 100000 usdc_pol polygon 0x...
   arkade swap-to-btc 100 usdc_pol polygon 0x...
 
-ENVIRONMENT:
-  LENDASWAP_API_KEY          API key for LendaSwap stablecoin swaps
-
-CONFIG:
-  Data stored in: ~/.arkade-wallet/config.json
+NOTE:
+  Private keys are auto-generated and stored securely in ~/.arkade-wallet/config.json.
+  They are never exposed via CLI arguments or stdout.
 `);
 }
 
 /**
- * Generate a random private key.
+ * Initialize wallet command. Auto-generates a new private key.
+ * If a wallet already exists, shows its address without overwriting.
  */
-async function cmdGenerate() {
-  const { SingleKey } = await import("@arkade-os/sdk");
+async function cmdInit(serverUrl) {
+  const existing = loadConfig();
+  if (existing) {
+    const { sdk } = await getSDK();
+    const { Wallet, SingleKey } = sdk;
 
-  const identity = SingleKey.fromRandomBytes();
-  const privateKey = Buffer.from(identity.key).toString("hex");
+    const wallet = await Wallet.create({
+      identity: SingleKey.fromHex(existing.privateKey),
+      arkServerUrl: existing.serverUrl || DEFAULT_SERVER,
+    });
 
-  console.log("Generated new private key:");
-  console.log(privateKey);
-  console.log("");
-  console.log("IMPORTANT: Save this key securely! It cannot be recovered.");
-  console.log("");
-  console.log("To initialize your wallet, run:");
-  console.log(`  arkade init ${privateKey}`);
-}
-
-/**
- * Initialize wallet command.
- */
-async function cmdInit(privateKey, serverUrl) {
-  if (!privateKey) {
-    console.error("Error: Private key required.");
-    console.error("Usage: arkade init <private-key-hex> [server-url]");
-    process.exit(1);
+    const address = await wallet.getAddress();
+    console.log("Wallet already initialized.");
+    console.log(`Server: ${existing.serverUrl || DEFAULT_SERVER}`);
+    console.log(`Address: ${address}`);
+    return;
   }
-
-  // Validate private key format
-  if (!/^[0-9a-fA-F]{64}$/.test(privateKey)) {
-    console.error("Error: Invalid private key. Must be 64 hex characters.");
-    process.exit(1);
-  }
-
-  const url = serverUrl || DEFAULT_SERVER;
-
-  // Test connection
-  const { sdk } = await getSDK();
-  const { Wallet, SingleKey } = sdk;
 
   try {
+    const config = await autoInit(serverUrl);
+
+    const { sdk } = await getSDK();
+    const { Wallet, SingleKey } = sdk;
+
     const wallet = await Wallet.create({
-      identity: SingleKey.fromHex(privateKey),
-      arkServerUrl: url,
+      identity: SingleKey.fromHex(config.privateKey),
+      arkServerUrl: config.serverUrl,
     });
 
     const address = await wallet.getAddress();
 
-    saveConfig({
-      privateKey,
-      serverUrl: url,
-      createdAt: new Date().toISOString(),
-    });
-
     console.log("Wallet initialized successfully!");
-    console.log(`Server: ${url}`);
+    console.log(`Server: ${config.serverUrl}`);
     console.log(`Address: ${address}`);
   } catch (e) {
     console.error(`Error: Failed to initialize wallet: ${e.message}`);
@@ -626,20 +624,11 @@ async function cmdSwapQuote(amount, from, to) {
     process.exit(1);
   }
 
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const wallet = await createWallet();
   const { skill } = await getSDK();
   const { LendaSwapSkill } = skill;
 
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
+  const lendaswap = new LendaSwapSkill({ wallet });
 
   try {
     let quote;
@@ -812,20 +801,11 @@ async function cmdSwapStatus(swapId) {
     process.exit(1);
   }
 
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const wallet = await createWallet();
   const { skill } = await getSDK();
   const { LendaSwapSkill } = skill;
 
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
+  const lendaswap = new LendaSwapSkill({ wallet });
 
   try {
     const status = await lendaswap.getSwapStatus(swapId);
@@ -855,20 +835,11 @@ async function cmdSwapStatus(swapId) {
  * Show pending stablecoin swaps command.
  */
 async function cmdSwapPending() {
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const wallet = await createWallet();
   const { skill } = await getSDK();
   const { LendaSwapSkill } = skill;
 
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
+  const lendaswap = new LendaSwapSkill({ wallet });
 
   try {
     const pending = await lendaswap.getPendingSwaps();
@@ -898,20 +869,11 @@ async function cmdSwapPending() {
  * Show available stablecoin pairs command.
  */
 async function cmdSwapPairs() {
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const wallet = await createWallet();
   const { skill } = await getSDK();
   const { LendaSwapSkill } = skill;
 
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
+  const lendaswap = new LendaSwapSkill({ wallet });
 
   try {
     const pairs = await lendaswap.getAvailablePairs();
@@ -939,11 +901,8 @@ async function main() {
   const command = args[0];
 
   switch (command) {
-    case "generate":
-      await cmdGenerate();
-      break;
     case "init":
-      await cmdInit(args[1], args[2]);
+      await cmdInit(args[1]);
       break;
     case "address":
       await cmdAddress();

@@ -36,7 +36,7 @@
  * const invoice = await lightning.createInvoice({ amount: 50000 });
  *
  * // Stablecoin swaps
- * const lendaswap = new LendaSwapSkill({ wallet, apiKey: "..." });
+ * const lendaswap = new LendaSwapSkill({ wallet });
  * const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
  * ```
  *
