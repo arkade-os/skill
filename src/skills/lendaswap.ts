@@ -35,7 +35,7 @@ import type {
 /**
  * Token decimals for stablecoins.
  */
-const TOKEN_DECIMALS: Record<string, number> = {
+export const TOKEN_DECIMALS: Record<string, number> = {
   usdc_pol: 6,
   usdc_eth: 6,
   usdc_arb: 6,
@@ -47,7 +47,9 @@ const TOKEN_DECIMALS: Record<string, number> = {
 /**
  * Map SDK swap status to our simplified status.
  */
-function mapSwapStatus(sdkStatus: LendaSwapStatus): StablecoinSwapStatus {
+export function mapSwapStatus(
+  sdkStatus: LendaSwapStatus,
+): StablecoinSwapStatus {
   switch (sdkStatus) {
     case "pending":
       return "pending";
@@ -79,7 +81,7 @@ function mapSwapStatus(sdkStatus: LendaSwapStatus): StablecoinSwapStatus {
 /**
  * Check if a status is terminal (no longer active).
  */
-function isTerminalStatus(status: StablecoinSwapStatus): boolean {
+export function isTerminalStatus(status: StablecoinSwapStatus): boolean {
   return (
     status === "completed" ||
     status === "expired" ||

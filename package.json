@@ -33,6 +33,8 @@
         "build:types": "tsc -p tsconfig.json --outDir dist/types --emitDeclarationOnly",
         "format": "prettier --write src cli",
         "lint": "prettier --check src cli",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "prepublishOnly": "pnpm run build"
     },
     "dependencies": {
@@ -44,7 +46,8 @@
         "@types/node": "^24.0.0",
         "prettier": "^3.6.0",
         "rimraf": "^6.0.0",
-        "typescript": "^5.9.0"
+        "typescript": "^5.9.0",
+        "vitest": "^4.0.18"
     },
     "skill": {
         "configPaths": [
