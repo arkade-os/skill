@@ -36,7 +36,32 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
+);
+
+/**
+ * Global flag: when true, all output is machine-readable JSON.
+ * Set via --json anywhere on the command line.
+ */
+let jsonOutput = false;
+
+/**
+ * Unified output helper.
+ * In JSON mode: prints JSON.stringify(data).
+ * In human mode: calls formatFn(data) for pretty display.
+ */
+function output(data, formatFn) {
+  if (jsonOutput) {
+    console.log(JSON.stringify(data, null, 2));
+  } else if (formatFn) {
+    formatFn(data);
+  }
+}
 
 const CONFIG_DIR = join(homedir(), ".arkade-wallet");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
@@ -145,10 +170,11 @@ function formatSats(sats) {
  */
 function printHelp() {
   console.log(`
-Arkade CLI - Bitcoin wallet for Arkade and Lightning
+Arkade CLI v${PKG.version} - Bitcoin wallet for Arkade and Lightning
 
 USAGE:
   arkade <command> [options]
+  arkade <command> --json          Machine-readable JSON output
 
 COMMANDS:
   init [url]                   Initialize wallet (auto-generates key)
@@ -183,6 +209,10 @@ COMMANDS:
   swap-pairs                    Show available stablecoin pairs
 
   help                          Show this help message
+  --version, -v                  Show version
+
+FLAGS:
+  --json                         Output machine-readable JSON (for agent integration)
 
 EXAMPLES:
   arkade init
@@ -216,9 +246,19 @@ async function cmdInit(serverUrl) {
     });
 
     const address = await wallet.getAddress();
-    console.log("Wallet already initialized.");
-    console.log(`Server: ${existing.serverUrl || DEFAULT_SERVER}`);
-    console.log(`Address: ${address}`);
+    output(
+      {
+        initialized: true,
+        existing: true,
+        server: existing.serverUrl || DEFAULT_SERVER,
+        address,
+      },
+      () => {
+        console.log("Wallet already initialized.");
+        console.log(`Server: ${existing.serverUrl || DEFAULT_SERVER}`);
+        console.log(`Address: ${address}`);
+      },
+    );
     return;
   }
 
@@ -235,10 +275,19 @@ async function cmdInit(serverUrl) {
 
     const address = await wallet.getAddress();
 
-    console.log("Wallet initialized successfully!");
-    console.log(`Server: ${config.serverUrl}`);
-    console.log(`Address: ${address}`);
+    output(
+      { initialized: true, existing: false, server: config.serverUrl, address },
+      () => {
+        console.log("Wallet initialized successfully!");
+        console.log(`Server: ${config.serverUrl}`);
+        console.log(`Address: ${address}`);
+      },
+    );
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: Failed to initialize wallet: ${e.message}`);
     process.exit(1);
   }
@@ -250,7 +299,7 @@ async function cmdInit(serverUrl) {
 async function cmdAddress() {
   const wallet = await createWallet();
   const address = await wallet.getAddress();
-  console.log(address);
+  output({ address }, () => console.log(address));
 }
 
 /**
@@ -259,7 +308,7 @@ async function cmdAddress() {
 async function cmdBoardingAddress() {
   const wallet = await createWallet();
   const address = await wallet.getBoardingAddress();
-  console.log(address);
+  output({ address }, () => console.log(address));
 }
 
 /**
@@ -273,26 +322,32 @@ async function cmdBalance() {
   const bitcoin = new ArkadeBitcoinSkill(wallet);
   const balance = await bitcoin.getBalance();
 
-  console.log("Balance Breakdown:");
-  console.log("------------------");
-  console.log(`Total:          ${formatSats(balance.total)} sats`);
-  console.log("");
-  console.log("Offchain (Ark):");
-  console.log(`  Available:    ${formatSats(balance.offchain.available)} sats`);
-  console.log(`  Settled:      ${formatSats(balance.offchain.settled)} sats`);
-  console.log(
-    `  Preconfirmed: ${formatSats(balance.offchain.preconfirmed)} sats`,
-  );
-  console.log(
-    `  Recoverable:  ${formatSats(balance.offchain.recoverable)} sats`,
-  );
-  console.log("");
-  console.log("Onchain (Boarding):");
-  console.log(`  Total:        ${formatSats(balance.onchain.total)} sats`);
-  console.log(`  Confirmed:    ${formatSats(balance.onchain.confirmed)} sats`);
-  console.log(
-    `  Unconfirmed:  ${formatSats(balance.onchain.unconfirmed)} sats`,
-  );
+  output(balance, () => {
+    console.log("Balance Breakdown:");
+    console.log("------------------");
+    console.log(`Total:          ${formatSats(balance.total)} sats`);
+    console.log("");
+    console.log("Offchain (Ark):");
+    console.log(
+      `  Available:    ${formatSats(balance.offchain.available)} sats`,
+    );
+    console.log(`  Settled:      ${formatSats(balance.offchain.settled)} sats`);
+    console.log(
+      `  Preconfirmed: ${formatSats(balance.offchain.preconfirmed)} sats`,
+    );
+    console.log(
+      `  Recoverable:  ${formatSats(balance.offchain.recoverable)} sats`,
+    );
+    console.log("");
+    console.log("Onchain (Boarding):");
+    console.log(`  Total:        ${formatSats(balance.onchain.total)} sats`);
+    console.log(
+      `  Confirmed:    ${formatSats(balance.onchain.confirmed)} sats`,
+    );
+    console.log(
+      `  Unconfirmed:  ${formatSats(balance.onchain.unconfirmed)} sats`,
+    );
+  });
 }
 
 /**
@@ -319,9 +374,15 @@ async function cmdSend(address, amount) {
 
   try {
     const result = await bitcoin.send({ address, amount: sats });
-    console.log(`Sent ${formatSats(sats)} sats`);
-    console.log(`Transaction ID: ${result.txid}`);
+    output(result, () => {
+      console.log(`Sent ${formatSats(sats)} sats`);
+      console.log(`Transaction ID: ${result.txid}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -338,22 +399,24 @@ async function cmdHistory() {
   const bitcoin = new ArkadeBitcoinSkill(wallet);
   const history = await bitcoin.getTransactionHistory();
 
-  if (history.length === 0) {
-    console.log("No transactions found.");
-    return;
-  }
+  output(history, () => {
+    if (history.length === 0) {
+      console.log("No transactions found.");
+      return;
+    }
 
-  console.log("Transaction History:");
-  console.log("--------------------");
+    console.log("Transaction History:");
+    console.log("--------------------");
 
-  for (const tx of history) {
-    const type = tx.type === "SENT" ? "SENT" : "RECEIVED";
-    const date = new Date(tx.createdAt).toLocaleString();
-    const status = tx.settled ? "settled" : "pending";
-    console.log(
-      `${date} | ${type} | ${formatSats(tx.amount)} sats | ${status}`,
-    );
-  }
+    for (const tx of history) {
+      const type = tx.type === "SENT" ? "SENT" : "RECEIVED";
+      const date = new Date(tx.createdAt).toLocaleString();
+      const status = tx.settled ? "settled" : "pending";
+      console.log(
+        `${date} | ${type} | ${formatSats(tx.amount)} sats | ${status}`,
+      );
+    }
+  });
 }
 
 /**
@@ -373,26 +436,34 @@ async function cmdOnboard() {
   const balance = await bitcoin.getBalance();
 
   if (balance.onchain.total === 0) {
-    console.log("No boarding UTXOs to onboard.");
-    console.log(
-      `Send BTC to your boarding address: ${await wallet.getBoardingAddress()}`,
-    );
+    const boardingAddr = await wallet.getBoardingAddress();
+    output({ status: "no_funds", boardingAddress: boardingAddr }, () => {
+      console.log("No boarding UTXOs to onboard.");
+      console.log(`Send BTC to your boarding address: ${boardingAddr}`);
+    });
     return;
   }
 
-  console.log(`Onboarding ${formatSats(balance.onchain.total)} sats...`);
+  if (!jsonOutput)
+    console.log(`Onboarding ${formatSats(balance.onchain.total)} sats...`);
 
   try {
     const result = await bitcoin.onboard({
       feeInfo: arkInfo.feeInfo,
       eventCallback: (event) => {
-        console.log(`  Event: ${event.type}`);
+        if (!jsonOutput) console.log(`  Event: ${event.type}`);
       },
     });
 
-    console.log(`Onboarded successfully!`);
-    console.log(`Commitment TX: ${result.commitmentTxid}`);
+    output(result, () => {
+      console.log(`Onboarded successfully!`);
+      console.log(`Commitment TX: ${result.commitmentTxid}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -421,26 +492,35 @@ async function cmdOffboard(destinationAddress) {
   const balance = await bitcoin.getBalance();
 
   if (balance.offchain.available === 0) {
-    console.log("No offchain funds to offboard.");
+    output({ status: "no_funds" }, () =>
+      console.log("No offchain funds to offboard."),
+    );
     return;
   }
 
-  console.log(
-    `Offboarding ${formatSats(balance.offchain.available)} sats to ${destinationAddress}...`,
-  );
+  if (!jsonOutput)
+    console.log(
+      `Offboarding ${formatSats(balance.offchain.available)} sats to ${destinationAddress}...`,
+    );
 
   try {
     const result = await bitcoin.offboard({
       destinationAddress,
       feeInfo: arkInfo.feeInfo,
       eventCallback: (event) => {
-        console.log(`  Event: ${event.type}`);
+        if (!jsonOutput) console.log(`  Event: ${event.type}`);
       },
     });
 
-    console.log(`Offboarded successfully!`);
-    console.log(`Commitment TX: ${result.commitmentTxid}`);
+    output(result, () => {
+      console.log(`Offboarded successfully!`);
+      console.log(`Commitment TX: ${result.commitmentTxid}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -477,12 +557,18 @@ async function cmdLnInvoice(amount, description) {
       description: description || "Arkade Lightning payment",
     });
 
-    console.log("Lightning Invoice Created:");
-    console.log(`Amount: ${formatSats(invoice.amount)} sats`);
-    console.log(`Invoice: ${invoice.bolt11}`);
-    console.log(`Payment Hash: ${invoice.paymentHash}`);
-    console.log(`Expires in: ${invoice.expirySeconds} seconds`);
+    output(invoice, () => {
+      console.log("Lightning Invoice Created:");
+      console.log(`Amount: ${formatSats(invoice.amount)} sats`);
+      console.log(`Invoice: ${invoice.bolt11}`);
+      console.log(`Payment Hash: ${invoice.paymentHash}`);
+      console.log(`Expires in: ${invoice.expirySeconds} seconds`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -507,16 +593,22 @@ async function cmdLnPay(bolt11) {
     network: "bitcoin",
   });
 
-  console.log("Paying Lightning invoice...");
+  if (!jsonOutput) console.log("Paying Lightning invoice...");
 
   try {
     const result = await lightning.payInvoice({ bolt11 });
 
-    console.log("Payment successful!");
-    console.log(`Amount: ${formatSats(result.amount)} sats`);
-    console.log(`Preimage: ${result.preimage}`);
-    console.log(`TX ID: ${result.txid}`);
+    output(result, () => {
+      console.log("Payment successful!");
+      console.log(`Amount: ${formatSats(result.amount)} sats`);
+      console.log(`Preimage: ${result.preimage}`);
+      console.log(`TX ID: ${result.txid}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -538,21 +630,27 @@ async function cmdLnFees() {
   try {
     const fees = await lightning.getFees();
 
-    console.log("Lightning Swap Fees:");
-    console.log("--------------------");
-    console.log("Submarine Swaps (Pay Invoice):");
-    console.log(`  Percentage: ${fees.submarine.percentage}%`);
-    console.log(`  Miner Fee:  ${formatSats(fees.submarine.minerFees)} sats`);
-    console.log("");
-    console.log("Reverse Swaps (Receive Invoice):");
-    console.log(`  Percentage: ${fees.reverse.percentage}%`);
-    console.log(
-      `  Lockup Fee: ${formatSats(fees.reverse.minerFees.lockup)} sats`,
-    );
-    console.log(
-      `  Claim Fee:  ${formatSats(fees.reverse.minerFees.claim)} sats`,
-    );
+    output(fees, () => {
+      console.log("Lightning Swap Fees:");
+      console.log("--------------------");
+      console.log("Submarine Swaps (Pay Invoice):");
+      console.log(`  Percentage: ${fees.submarine.percentage}%`);
+      console.log(`  Miner Fee:  ${formatSats(fees.submarine.minerFees)} sats`);
+      console.log("");
+      console.log("Reverse Swaps (Receive Invoice):");
+      console.log(`  Percentage: ${fees.reverse.percentage}%`);
+      console.log(
+        `  Lockup Fee: ${formatSats(fees.reverse.minerFees.lockup)} sats`,
+      );
+      console.log(
+        `  Claim Fee:  ${formatSats(fees.reverse.minerFees.claim)} sats`,
+      );
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -574,11 +672,17 @@ async function cmdLnLimits() {
   try {
     const limits = await lightning.getLimits();
 
-    console.log("Lightning Swap Limits:");
-    console.log("----------------------");
-    console.log(`Minimum: ${formatSats(limits.min)} sats`);
-    console.log(`Maximum: ${formatSats(limits.max)} sats`);
+    output(limits, () => {
+      console.log("Lightning Swap Limits:");
+      console.log("----------------------");
+      console.log(`Minimum: ${formatSats(limits.min)} sats`);
+      console.log(`Maximum: ${formatSats(limits.max)} sats`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -600,21 +704,27 @@ async function cmdLnPending() {
   try {
     const pending = await lightning.getPendingSwaps();
 
-    if (pending.length === 0) {
-      console.log("No pending swaps.");
-      return;
-    }
+    output(pending, () => {
+      if (pending.length === 0) {
+        console.log("No pending swaps.");
+        return;
+      }
 
-    console.log("Pending Lightning Swaps:");
-    console.log("------------------------");
+      console.log("Pending Lightning Swaps:");
+      console.log("------------------------");
 
-    for (const swap of pending) {
-      const date = swap.createdAt.toLocaleString();
-      console.log(
-        `${swap.id} | ${swap.type} | ${formatSats(swap.amount)} sats | ${swap.status} | ${date}`,
-      );
-    }
+      for (const swap of pending) {
+        const date = swap.createdAt.toLocaleString();
+        console.log(
+          `${swap.id} | ${swap.type} | ${formatSats(swap.amount)} sats | ${swap.status} | ${date}`,
+        );
+      }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -703,13 +813,19 @@ async function cmdSwapQuote(amount, from, to) {
       quote = await lendaswap.getQuoteStablecoinToBtc(tokenAmount, from);
     }
 
-    console.log("Swap Quote:");
-    console.log("-----------");
-    console.log(`From: ${quote.sourceAmount} ${quote.sourceToken}`);
-    console.log(`To:   ${quote.targetAmount} ${quote.targetToken}`);
-    console.log(`Rate: ${quote.exchangeRate}`);
-    console.log(`Fee:  ${quote.fee.amount} (${quote.fee.percentage}%)`);
+    output(quote, () => {
+      console.log("Swap Quote:");
+      console.log("-----------");
+      console.log(`From: ${quote.sourceAmount} ${quote.sourceToken}`);
+      console.log(`To:   ${quote.targetAmount} ${quote.targetToken}`);
+      console.log(`Rate: ${quote.exchangeRate}`);
+      console.log(`Fee:  ${quote.fee.amount} (${quote.fee.percentage}%)`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -743,7 +859,8 @@ async function cmdSwapToStable(
 
   const lendaswap = await createLendaSwap();
 
-  console.log(`Swapping ${formatSats(sats)} sats to ${targetToken}...`);
+  if (!jsonOutput)
+    console.log(`Swapping ${formatSats(sats)} sats to ${targetToken}...`);
 
   try {
     const result = await lendaswap.swapBtcToStablecoin({
@@ -753,19 +870,25 @@ async function cmdSwapToStable(
       targetAddress,
     });
 
-    console.log("Swap created and funded!");
-    console.log(`Swap ID: ${result.swapId}`);
-    console.log(`Status: ${result.status}`);
-    console.log(`Expected: ${result.targetAmount} ${targetToken}`);
-    if (result.fundingTxid) {
-      console.log(`Funding TX: ${result.fundingTxid}`);
-    }
-    if (result.paymentDetails?.address) {
-      console.log(`VHTLC Address: ${result.paymentDetails.address}`);
-    }
-    console.log(`Fee: ${result.fee.amount} sats`);
-    console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
+    output(result, () => {
+      console.log("Swap created and funded!");
+      console.log(`Swap ID: ${result.swapId}`);
+      console.log(`Status: ${result.status}`);
+      console.log(`Expected: ${result.targetAmount} ${targetToken}`);
+      if (result.fundingTxid) {
+        console.log(`Funding TX: ${result.fundingTxid}`);
+      }
+      if (result.paymentDetails?.address) {
+        console.log(`VHTLC Address: ${result.paymentDetails.address}`);
+      }
+      console.log(`Fee: ${result.fee.amount} sats`);
+      console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -794,7 +917,8 @@ async function cmdSwapToBtc(amount, sourceToken, sourceChain, evmAddress) {
   const wallet = lendaswap.getWallet();
   const arkAddress = await wallet.getAddress();
 
-  console.log(`Swapping ${tokenAmount} ${sourceToken} to BTC...`);
+  if (!jsonOutput)
+    console.log(`Swapping ${tokenAmount} ${sourceToken} to BTC...`);
 
   try {
     const result = await lendaswap.swapStablecoinToBtc({
@@ -805,19 +929,25 @@ async function cmdSwapToBtc(amount, sourceToken, sourceChain, evmAddress) {
       userAddress: evmAddress,
     });
 
-    console.log("Swap created!");
-    console.log(`Swap ID: ${result.swapId}`);
-    console.log(`Status: ${result.status}`);
-    console.log(`Expected: ${result.targetAmount} sats`);
-    if (result.paymentDetails?.address) {
-      console.log(`HTLC Address: ${result.paymentDetails.address}`);
-    }
-    if (result.paymentDetails?.callData) {
-      console.log(`Token Address: ${result.paymentDetails.callData}`);
-    }
-    console.log(`Fee: ${result.fee.amount} sats`);
-    console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
+    output(result, () => {
+      console.log("Swap created!");
+      console.log(`Swap ID: ${result.swapId}`);
+      console.log(`Status: ${result.status}`);
+      console.log(`Expected: ${result.targetAmount} sats`);
+      if (result.paymentDetails?.address) {
+        console.log(`HTLC Address: ${result.paymentDetails.address}`);
+      }
+      if (result.paymentDetails?.callData) {
+        console.log(`Token Address: ${result.paymentDetails.callData}`);
+      }
+      console.log(`Fee: ${result.fee.amount} sats`);
+      console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -838,21 +968,27 @@ async function cmdSwapStatus(swapId) {
   try {
     const status = await lendaswap.getSwapStatus(swapId);
 
-    console.log("Swap Status:");
-    console.log("------------");
-    console.log(`ID: ${status.id}`);
-    console.log(`Direction: ${status.direction}`);
-    console.log(`Status: ${status.status}`);
-    console.log(`From: ${status.sourceAmount} ${status.sourceToken}`);
-    console.log(`To: ${status.targetAmount} ${status.targetToken}`);
-    console.log(`Created: ${status.createdAt.toLocaleString()}`);
-    if (status.completedAt) {
-      console.log(`Completed: ${status.completedAt.toLocaleString()}`);
-    }
-    if (status.txid) {
-      console.log(`TX ID: ${status.txid}`);
-    }
+    output(status, () => {
+      console.log("Swap Status:");
+      console.log("------------");
+      console.log(`ID: ${status.id}`);
+      console.log(`Direction: ${status.direction}`);
+      console.log(`Status: ${status.status}`);
+      console.log(`From: ${status.sourceAmount} ${status.sourceToken}`);
+      console.log(`To: ${status.targetAmount} ${status.targetToken}`);
+      console.log(`Created: ${status.createdAt.toLocaleString()}`);
+      if (status.completedAt) {
+        console.log(`Completed: ${status.completedAt.toLocaleString()}`);
+      }
+      if (status.txid) {
+        console.log(`TX ID: ${status.txid}`);
+      }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -867,22 +1003,30 @@ async function cmdSwapPending() {
   try {
     const pending = await lendaswap.getPendingSwaps();
 
-    if (pending.length === 0) {
-      console.log("No pending swaps.");
-      return;
-    }
+    output(pending, () => {
+      if (pending.length === 0) {
+        console.log("No pending swaps.");
+        return;
+      }
 
-    console.log("Pending Stablecoin Swaps:");
-    console.log("-------------------------");
+      console.log("Pending Stablecoin Swaps:");
+      console.log("-------------------------");
 
-    for (const swap of pending) {
-      const date = swap.createdAt.toLocaleString();
-      console.log(`${swap.id} | ${swap.direction} | ${swap.status} | ${date}`);
-      console.log(
-        `  ${swap.sourceAmount} ${swap.sourceToken} → ${swap.targetAmount} ${swap.targetToken}`,
-      );
-    }
+      for (const swap of pending) {
+        const date = swap.createdAt.toLocaleString();
+        console.log(
+          `${swap.id} | ${swap.direction} | ${swap.status} | ${date}`,
+        );
+        console.log(
+          `  ${swap.sourceAmount} ${swap.sourceToken} → ${swap.targetAmount} ${swap.targetToken}`,
+        );
+      }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -897,16 +1041,22 @@ async function cmdSwapPairs() {
   try {
     const pairs = await lendaswap.getAvailablePairs();
 
-    console.log("Available Trading Pairs:");
-    console.log("------------------------");
+    output(pairs, () => {
+      console.log("Available Trading Pairs:");
+      console.log("------------------------");
 
-    for (const pair of pairs) {
-      console.log(`${pair.from} → ${pair.to}`);
-      console.log(
-        `  Min: ${pair.minAmount} | Max: ${pair.maxAmount} | Fee: ${pair.feePercentage}%`,
-      );
-    }
+      for (const pair of pairs) {
+        console.log(`${pair.from} → ${pair.to}`);
+        console.log(
+          `  Min: ${pair.minAmount} | Max: ${pair.maxAmount} | Fee: ${pair.feePercentage}%`,
+        );
+      }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -927,18 +1077,24 @@ async function cmdSwapClaim(swapId) {
   try {
     const result = await lendaswap.claimSwap(swapId);
 
-    if (result.success) {
-      console.log("Swap claimed successfully!");
-      if (result.chain) {
-        console.log(`Chain: ${result.chain}`);
+    output(result, () => {
+      if (result.success) {
+        console.log("Swap claimed successfully!");
+        if (result.chain) {
+          console.log(`Chain: ${result.chain}`);
+        }
+        if (result.txHash) {
+          console.log(`TX Hash: ${result.txHash}`);
+        }
+      } else {
+        console.log(`Claim status: ${result.message}`);
       }
-      if (result.txHash) {
-        console.log(`TX Hash: ${result.txHash}`);
-      }
-    } else {
-      console.log(`Claim status: ${result.message}`);
-    }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -960,18 +1116,24 @@ async function cmdSwapRefund(swapId, destinationAddress) {
     const options = destinationAddress ? { destinationAddress } : undefined;
     const result = await lendaswap.refundSwap(swapId, options);
 
-    if (result.success) {
-      console.log("Swap refunded successfully!");
-      if (result.txId) {
-        console.log(`TX ID: ${result.txId}`);
+    output(result, () => {
+      if (result.success) {
+        console.log("Swap refunded successfully!");
+        if (result.txId) {
+          console.log(`TX ID: ${result.txId}`);
+        }
+        if (result.refundAmount != null) {
+          console.log(`Refund Amount: ${formatSats(result.refundAmount)} sats`);
+        }
+      } else {
+        console.log(`Refund status: ${result.message}`);
       }
-      if (result.refundAmount != null) {
-        console.log(`Refund Amount: ${formatSats(result.refundAmount)} sats`);
-      }
-    } else {
-      console.log(`Refund status: ${result.message}`);
-    }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -992,27 +1154,33 @@ async function cmdSwapEvmRefund(swapId) {
   try {
     const data = await lendaswap.getEvmRefundCallData(swapId);
 
-    console.log("EVM Refund Call Data:");
-    console.log("---------------------");
-    console.log(`Contract: ${data.to}`);
-    console.log(`Call Data: ${data.data}`);
-    console.log(`Timelock Expired: ${data.timelockExpired}`);
-    console.log(
-      `Timelock Expiry: ${new Date(data.timelockExpiry * 1000).toLocaleString()}`,
-    );
+    output(data, () => {
+      console.log("EVM Refund Call Data:");
+      console.log("---------------------");
+      console.log(`Contract: ${data.to}`);
+      console.log(`Call Data: ${data.data}`);
+      console.log(`Timelock Expired: ${data.timelockExpired}`);
+      console.log(
+        `Timelock Expiry: ${new Date(data.timelockExpiry * 1000).toLocaleString()}`,
+      );
 
-    if (!data.timelockExpired) {
-      console.log("");
-      console.log(
-        `Note: Refund not yet available. Timelock expires at ${new Date(data.timelockExpiry * 1000).toLocaleString()}.`,
-      );
-    } else {
-      console.log("");
-      console.log(
-        "Send a transaction to the contract above with the provided call data to refund your EVM tokens.",
-      );
-    }
+      if (!data.timelockExpired) {
+        console.log("");
+        console.log(
+          `Note: Refund not yet available. Timelock expires at ${new Date(data.timelockExpiry * 1000).toLocaleString()}.`,
+        );
+      } else {
+        console.log("");
+        console.log(
+          "Send a transaction to the contract above with the provided call data to refund your EVM tokens.",
+        );
+      }
+    });
   } catch (e) {
+    if (jsonOutput) {
+      console.log(JSON.stringify({ error: e.message }));
+      process.exit(1);
+    }
     console.error(`Error: ${e.message}`);
     process.exit(1);
   }
@@ -1022,12 +1190,28 @@ async function cmdSwapEvmRefund(swapId) {
  * Main entry point.
  */
 async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0];
+  const rawArgs = process.argv.slice(2);
+
+  // Parse global flags
+  const jsonIndex = rawArgs.indexOf("--json");
+  if (jsonIndex !== -1) {
+    jsonOutput = true;
+    rawArgs.splice(jsonIndex, 1);
+  }
+
+  // --version / -v
+  if (rawArgs[0] === "--version" || rawArgs[0] === "-v") {
+    output({ name: PKG.name, version: PKG.version }, () =>
+      console.log(PKG.version),
+    );
+    return;
+  }
+
+  const command = rawArgs[0];
 
   switch (command) {
     case "init":
-      await cmdInit(args[1]);
+      await cmdInit(rawArgs[1]);
       break;
     case "address":
       await cmdAddress();
@@ -1039,7 +1223,7 @@ async function main() {
       await cmdBalance();
       break;
     case "send":
-      await cmdSend(args[1], args[2]);
+      await cmdSend(rawArgs[1], rawArgs[2]);
       break;
     case "history":
       await cmdHistory();
@@ -1048,13 +1232,13 @@ async function main() {
       await cmdOnboard();
       break;
     case "offboard":
-      await cmdOffboard(args[1]);
+      await cmdOffboard(rawArgs[1]);
       break;
     case "ln-invoice":
-      await cmdLnInvoice(args[1], args.slice(2).join(" "));
+      await cmdLnInvoice(rawArgs[1], rawArgs.slice(2).join(" "));
       break;
     case "ln-pay":
-      await cmdLnPay(args[1]);
+      await cmdLnPay(rawArgs[1]);
       break;
     case "ln-fees":
       await cmdLnFees();
@@ -1066,25 +1250,25 @@ async function main() {
       await cmdLnPending();
       break;
     case "swap-quote":
-      await cmdSwapQuote(args[1], args[2], args[3]);
+      await cmdSwapQuote(rawArgs[1], rawArgs[2], rawArgs[3]);
       break;
     case "swap-to-stable":
-      await cmdSwapToStable(args[1], args[2], args[3], args[4]);
+      await cmdSwapToStable(rawArgs[1], rawArgs[2], rawArgs[3], rawArgs[4]);
       break;
     case "swap-to-btc":
-      await cmdSwapToBtc(args[1], args[2], args[3], args[4]);
+      await cmdSwapToBtc(rawArgs[1], rawArgs[2], rawArgs[3], rawArgs[4]);
       break;
     case "swap-claim":
-      await cmdSwapClaim(args[1]);
+      await cmdSwapClaim(rawArgs[1]);
       break;
     case "swap-refund":
-      await cmdSwapRefund(args[1], args[2]);
+      await cmdSwapRefund(rawArgs[1], rawArgs[2]);
       break;
     case "swap-evm-refund":
-      await cmdSwapEvmRefund(args[1]);
+      await cmdSwapEvmRefund(rawArgs[1]);
       break;
     case "swap-status":
-      await cmdSwapStatus(args[1]);
+      await cmdSwapStatus(rawArgs[1]);
       break;
     case "swap-pending":
       await cmdSwapPending();
@@ -1106,6 +1290,10 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(`Error: ${e.message}`);
+  if (jsonOutput) {
+    console.log(JSON.stringify({ error: e.message }));
+  } else {
+    console.error(`Error: ${e.message}`);
+  }
   process.exit(1);
 });

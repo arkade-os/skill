@@ -131,6 +131,22 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 | `swap-pending` | Show pending swaps |
 | `swap-pairs` | Show trading pairs |
 
+## JSON Output (Agent Mode)
+
+Add `--json` to any command for machine-readable output:
+
+```bash
+arkade balance --json
+arkade send ark1... 50000 --json
+arkade swap-quote 100000 btc usdc_pol --json
+```
+
+Errors are also returned as JSON when the flag is set:
+
+```json
+{ "error": "No wallet found. Run 'arkade init' first." }
+```
+
 ## Configuration
 
 - **Data:** `~/.arkade-wallet/config.json`
