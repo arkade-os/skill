@@ -543,12 +543,64 @@ export interface StablecoinPair {
   from: string;
   /** Target token */
   to: string;
-  /** Minimum amount */
+  /** Minimum swap amount in satoshis */
   minAmount: number;
-  /** Maximum amount */
+  /** Maximum swap amount in satoshis */
   maxAmount: number;
-  /** Fee percentage */
+  /** Protocol fee rate (decimal, e.g. 0.0025 = 0.25%) */
   feePercentage: number;
+}
+
+/**
+ * EVM HTLC funding call data for EVM-to-BTC swaps.
+ */
+export interface EvmFundingCallData {
+  /** ERC-20 approve call data */
+  approve: { to: string; data: string };
+  /** HTLC createSwap call data */
+  createSwap: { to: string; data: string };
+}
+
+/**
+ * EVM HTLC refund call data.
+ */
+export interface EvmRefundCallData {
+  /** HTLC contract address */
+  to: string;
+  /** Encoded refundSwap call data */
+  data: string;
+  /** Whether the timelock has expired and refund is available */
+  timelockExpired: boolean;
+  /** Unix timestamp when refund becomes available */
+  timelockExpiry: number;
+}
+
+/**
+ * Result of a claim operation.
+ */
+export interface ClaimSwapResult {
+  /** Whether the claim was successful */
+  success: boolean;
+  /** Human-readable message */
+  message: string;
+  /** Transaction hash (for Gelato/Polygon/Arbitrum claims) */
+  txHash?: string;
+  /** Chain the claim targets */
+  chain?: string;
+}
+
+/**
+ * Result of a refund operation.
+ */
+export interface RefundSwapResult {
+  /** Whether the refund was successful */
+  success: boolean;
+  /** Human-readable message */
+  message: string;
+  /** Transaction ID (for on-chain/Arkade refunds) */
+  txId?: string;
+  /** Amount refunded in satoshis */
+  refundAmount?: number;
 }
 
 /**
@@ -627,16 +679,40 @@ export interface StablecoinSwapSkill extends Skill {
   getAvailablePairs(): Promise<StablecoinPair[]>;
 
   /**
-   * Claim funds from a completed swap (for EVM-side claims).
+   * Claim funds from a completed swap.
+   * Uses Gelato relay for gasless claims on Polygon/Arbitrum.
    * @param swapId Swap ID
-   * @returns Transaction ID
+   * @returns Claim result
    */
-  claimSwap(swapId: string): Promise<{ txid: string }>;
+  claimSwap(swapId: string): Promise<ClaimSwapResult>;
 
   /**
    * Refund an expired or failed swap.
    * @param swapId Swap ID
-   * @returns Transaction ID
+   * @param options Refund options (destination address for Arkade/on-chain refunds)
+   * @returns Refund result
    */
-  refundSwap(swapId: string): Promise<{ txid: string }>;
+  refundSwap(
+    swapId: string,
+    options?: { destinationAddress?: string },
+  ): Promise<RefundSwapResult>;
+
+  /**
+   * Get EVM HTLC funding call data for EVM-to-BTC swaps.
+   * Returns approve + createSwap call data for EVM transactions.
+   * @param swapId Swap ID
+   * @param tokenDecimals Decimals of the source token (e.g., 6 for USDC)
+   * @returns Funding call data
+   */
+  getEvmFundingCallData(
+    swapId: string,
+    tokenDecimals: number,
+  ): Promise<EvmFundingCallData>;
+
+  /**
+   * Get EVM HTLC refund call data for timed-out EVM-to-BTC swaps.
+   * @param swapId Swap ID
+   * @returns Refund call data
+   */
+  getEvmRefundCallData(swapId: string): Promise<EvmRefundCallData>;
 }

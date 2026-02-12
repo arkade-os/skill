@@ -171,6 +171,8 @@ COMMANDS:
                                 Swap BTC to stablecoin
   swap-to-btc <amt> <token> <chain> <evm-addr>
                                 Swap stablecoin to BTC
+  swap-claim <swap-id>          Claim a completed swap
+  swap-refund <swap-id> [addr]  Refund an expired/failed swap
   swap-status <swap-id>         Check swap status
   swap-pending                  Show pending stablecoin swaps
   swap-pairs                    Show available stablecoin pairs
@@ -614,6 +616,44 @@ async function cmdLnPending() {
 }
 
 /**
+ * Create a LendaSwapSkill with mnemonic persistence.
+ * Loads mnemonic from config, and saves it back after first initialization.
+ */
+async function createLendaSwap() {
+  const wallet = await createWallet();
+  const { skill } = await getSDK();
+  const { LendaSwapSkill } = skill;
+
+  const config = loadConfig();
+  const options = {};
+
+  if (config.lendaswapMnemonic) {
+    options.mnemonic = config.lendaswapMnemonic;
+  }
+  if (process.env.LENDASWAP_API_KEY) {
+    options.apiKey = process.env.LENDASWAP_API_KEY;
+  }
+  if (process.env.LENDASWAP_API_URL) {
+    options.apiUrl = process.env.LENDASWAP_API_URL;
+  }
+
+  const lendaswap = new LendaSwapSkill({ wallet, ...options });
+
+  // Persist mnemonic after first SDK client initialization
+  if (!config.lendaswapMnemonic) {
+    try {
+      const mnemonic = await lendaswap.getMnemonic();
+      config.lendaswapMnemonic = mnemonic;
+      saveConfig(config);
+    } catch {
+      // Non-fatal: mnemonic save failed, will generate a new one next time
+    }
+  }
+
+  return lendaswap;
+}
+
+/**
  * Get stablecoin quote command.
  */
 async function cmdSwapQuote(amount, from, to) {
@@ -624,11 +664,7 @@ async function cmdSwapQuote(amount, from, to) {
     process.exit(1);
   }
 
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({ wallet });
+  const lendaswap = await createLendaSwap();
 
   try {
     let quote;
@@ -680,26 +716,13 @@ async function cmdSwapToStable(
     process.exit(1);
   }
 
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const sats = parseInt(amount, 10);
   if (isNaN(sats) || sats <= 0) {
     console.error("Error: Invalid amount.");
     process.exit(1);
   }
 
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
+  const lendaswap = await createLendaSwap();
 
   console.log(`Swapping ${formatSats(sats)} sats to ${targetToken}...`);
 
@@ -715,10 +738,10 @@ async function cmdSwapToStable(
     console.log(`Swap ID: ${result.swapId}`);
     console.log(`Status: ${result.status}`);
     console.log(`Expected: ${result.targetAmount} ${targetToken}`);
-    console.log(`Rate: ${result.exchangeRate}`);
     if (result.paymentDetails?.address) {
       console.log(`Payment Address: ${result.paymentDetails.address}`);
     }
+    console.log(`Fee: ${result.fee.amount} sats`);
     console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
   } catch (e) {
     console.error(`Error: ${e.message}`);
@@ -739,27 +762,14 @@ async function cmdSwapToBtc(amount, sourceToken, sourceChain, evmAddress) {
     process.exit(1);
   }
 
-  const apiKey = process.env.LENDASWAP_API_KEY;
-  if (!apiKey) {
-    console.error("Error: LENDASWAP_API_KEY environment variable required.");
-    process.exit(1);
-  }
-
   const tokenAmount = parseFloat(amount);
   if (isNaN(tokenAmount) || tokenAmount <= 0) {
     console.error("Error: Invalid amount.");
     process.exit(1);
   }
 
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({
-    wallet,
-    apiKey,
-  });
-
+  const lendaswap = await createLendaSwap();
+  const wallet = lendaswap.getWallet();
   const arkAddress = await wallet.getAddress();
 
   console.log(`Swapping ${tokenAmount} ${sourceToken} to BTC...`);
@@ -777,13 +787,13 @@ async function cmdSwapToBtc(amount, sourceToken, sourceChain, evmAddress) {
     console.log(`Swap ID: ${result.swapId}`);
     console.log(`Status: ${result.status}`);
     console.log(`Expected: ${result.targetAmount} sats`);
-    console.log(`Rate: ${result.exchangeRate}`);
     if (result.paymentDetails?.address) {
       console.log(`HTLC Address: ${result.paymentDetails.address}`);
     }
     if (result.paymentDetails?.callData) {
-      console.log(`Call Data: ${result.paymentDetails.callData}`);
+      console.log(`Token Address: ${result.paymentDetails.callData}`);
     }
+    console.log(`Fee: ${result.fee.amount} sats`);
     console.log(`Expires: ${result.expiresAt.toLocaleString()}`);
   } catch (e) {
     console.error(`Error: ${e.message}`);
@@ -801,11 +811,7 @@ async function cmdSwapStatus(swapId) {
     process.exit(1);
   }
 
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({ wallet });
+  const lendaswap = await createLendaSwap();
 
   try {
     const status = await lendaswap.getSwapStatus(swapId);
@@ -817,7 +823,6 @@ async function cmdSwapStatus(swapId) {
     console.log(`Status: ${status.status}`);
     console.log(`From: ${status.sourceAmount} ${status.sourceToken}`);
     console.log(`To: ${status.targetAmount} ${status.targetToken}`);
-    console.log(`Rate: ${status.exchangeRate}`);
     console.log(`Created: ${status.createdAt.toLocaleString()}`);
     if (status.completedAt) {
       console.log(`Completed: ${status.completedAt.toLocaleString()}`);
@@ -835,11 +840,7 @@ async function cmdSwapStatus(swapId) {
  * Show pending stablecoin swaps command.
  */
 async function cmdSwapPending() {
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({ wallet });
+  const lendaswap = await createLendaSwap();
 
   try {
     const pending = await lendaswap.getPendingSwaps();
@@ -869,11 +870,7 @@ async function cmdSwapPending() {
  * Show available stablecoin pairs command.
  */
 async function cmdSwapPairs() {
-  const wallet = await createWallet();
-  const { skill } = await getSDK();
-  const { LendaSwapSkill } = skill;
-
-  const lendaswap = new LendaSwapSkill({ wallet });
+  const lendaswap = await createLendaSwap();
 
   try {
     const pairs = await lendaswap.getAvailablePairs();
@@ -886,6 +883,71 @@ async function cmdSwapPairs() {
       console.log(
         `  Min: ${pair.minAmount} | Max: ${pair.maxAmount} | Fee: ${pair.feePercentage}%`,
       );
+    }
+  } catch (e) {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Claim a swap command.
+ */
+async function cmdSwapClaim(swapId) {
+  if (!swapId) {
+    console.error("Error: Swap ID required.");
+    console.error("Usage: arkade swap-claim <swap-id>");
+    process.exit(1);
+  }
+
+  const lendaswap = await createLendaSwap();
+
+  try {
+    const result = await lendaswap.claimSwap(swapId);
+
+    if (result.success) {
+      console.log("Swap claimed successfully!");
+      if (result.chain) {
+        console.log(`Chain: ${result.chain}`);
+      }
+      if (result.txHash) {
+        console.log(`TX Hash: ${result.txHash}`);
+      }
+    } else {
+      console.log(`Claim status: ${result.message}`);
+    }
+  } catch (e) {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Refund a swap command.
+ */
+async function cmdSwapRefund(swapId, destinationAddress) {
+  if (!swapId) {
+    console.error("Error: Swap ID required.");
+    console.error("Usage: arkade swap-refund <swap-id> [destination-address]");
+    process.exit(1);
+  }
+
+  const lendaswap = await createLendaSwap();
+
+  try {
+    const options = destinationAddress ? { destinationAddress } : undefined;
+    const result = await lendaswap.refundSwap(swapId, options);
+
+    if (result.success) {
+      console.log("Swap refunded successfully!");
+      if (result.txId) {
+        console.log(`TX ID: ${result.txId}`);
+      }
+      if (result.refundAmount != null) {
+        console.log(`Refund Amount: ${formatSats(result.refundAmount)} sats`);
+      }
+    } else {
+      console.log(`Refund status: ${result.message}`);
     }
   } catch (e) {
     console.error(`Error: ${e.message}`);
@@ -948,6 +1010,12 @@ async function main() {
       break;
     case "swap-to-btc":
       await cmdSwapToBtc(args[1], args[2], args[3], args[4]);
+      break;
+    case "swap-claim":
+      await cmdSwapClaim(args[1]);
+      break;
+    case "swap-refund":
+      await cmdSwapRefund(args[1], args[2]);
       break;
     case "swap-status":
       await cmdSwapStatus(args[1]);

@@ -91,6 +91,10 @@ export type {
   StablecoinSwapInfo,
   StablecoinQuote,
   StablecoinPair,
+  EvmFundingCallData,
+  EvmRefundCallData,
+  ClaimSwapResult,
+  RefundSwapResult,
 } from "./types";
 
 // Bitcoin skill
