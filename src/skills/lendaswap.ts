@@ -189,8 +189,23 @@ export class LendaSwapSkill implements StablecoinSwapSkill {
   async isAvailable(): Promise<boolean> {
     try {
       const client = await this.getClient();
-      const result = await client.healthCheck();
-      return result === "ok";
+      try {
+        const result = await client.healthCheck();
+        if (
+          typeof result === "string"
+            ? result.toLowerCase() === "ok"
+            : result != null
+        ) {
+          return true;
+        }
+      } catch {
+        // healthCheck may fail to parse plain-text response;
+        // fall back to a lightweight API call instead.
+      }
+      // Fallback: if healthCheck throws or returns unexpected data,
+      // verify the API is reachable by fetching asset pairs.
+      const pairs = await client.getAssetPairs();
+      return Array.isArray(pairs) && pairs.length > 0;
     } catch {
       return false;
     }
