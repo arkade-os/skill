@@ -1,0 +1,74 @@
+diff --git a/dist/client.js b/dist/client.js
+index 0fec37ae5dfe4d084022cd7ae23c62df7a1f66c4..9e1284b0086bd09752dd9e13474fa60c5708d418 100644
+--- a/dist/client.js
++++ b/dist/client.js
+@@ -1,13 +1,13 @@
+ import { createApiClient, } from "./api/client.js";
+ import { getVhtlcAmounts } from "./arkade.js";
+-import { createArkadeToEvmSwapGeneric, createBitcoinToArkadeSwap, createBitcoinToEvmSwap, createEvmToArkadeSwapGeneric, createEvmToBitcoinSwap, createEvmToLightningSwapGeneric, createLightningToEvmSwapGeneric, } from "./create";
++import { createArkadeToEvmSwapGeneric, createBitcoinToArkadeSwap, createBitcoinToEvmSwap, createEvmToArkadeSwapGeneric, createEvmToBitcoinSwap, createEvmToLightningSwapGeneric, createLightningToEvmSwapGeneric, } from "./create/index.js";
+ import { delegateClaim, delegateRefund } from "./delegate.js";
+ import { broadcastTransaction, findOutputByAddress } from "./esplora.js";
+-import { encodeApproveCallData, encodeHtlcErc20RefundCallData } from "./evm";
++import { encodeApproveCallData, encodeHtlcErc20RefundCallData } from "./evm/index.js";
+ import { buildArkadeClaim, claimViaGasless as gaslessClaim, claim as redeemClaim, } from "./redeem/index.js";
+-import { buildArkadeRefund, buildOnchainClaimTransaction, buildOnchainRefundTransaction, verifyHtlcAddress, } from "./refund";
++import { buildArkadeRefund, buildOnchainClaimTransaction, buildOnchainRefundTransaction, verifyHtlcAddress, } from "./refund/index.js";
+ import { bytesToHex, hexToBytes, Signer, } from "./signer/index.js";
+-import { SWAP_STORAGE_VERSION, } from "./storage";
++import { SWAP_STORAGE_VERSION, } from "./storage/index.js";
+ import { isArkade, isBtcOnchain, isEvmToken, isLightning } from "./tokens.js";
+ // Re-export coordinator utilities for Arkade-to-EVM redeemAndExecute flow
+ export { buildExecuteAndCreateCalls, buildRedeemCalls, buildRedeemDigest, encodeExecuteAndCreate, encodeRedeemAndExecute, encodeRefundAndExecute, encodeRefundTo, } from "./evm/index.js";
+diff --git a/dist/create/arkade.js b/dist/create/arkade.js
+index 3e9fb4c8bb1cc51acb2543a9a1caca94554d6b0f..1fbc163e497361990a7d292b9667a9416547435b 100644
+--- a/dist/create/arkade.js
++++ b/dist/create/arkade.js
+@@ -1,7 +1,7 @@
+ /**
+  * Arkade to EVM swap creation.
+  */
+-import { deriveEvmAddress } from "../evm";
++import { deriveEvmAddress } from "../evm/index.js";
+ import { bytesToHex } from "../signer/index.js";
+ /**
+  * Creates a new Arkade-to-EVM swap via the generic endpoint.
+diff --git a/dist/create/lightning.js b/dist/create/lightning.js
+index 980c507a6d06b77b39bf5863eb175e8917f70498..6e576fe39a4bd675a9f6816849f474db21c88fc6 100644
+--- a/dist/create/lightning.js
++++ b/dist/create/lightning.js
+@@ -1,7 +1,7 @@
+ /**
+  * Lightning to EVM swap creation.
+  */
+-import { deriveEvmAddress } from "../evm";
++import { deriveEvmAddress } from "../evm/index.js";
+ import { bytesToHex } from "../signer/index.js";
+ /**
+  * Creates a new Lightning to EVM swap using the chain-agnostic generic endpoint.
+diff --git a/dist/index.js b/dist/index.js
+index 3e9d714c07b9c43ea36edbf9a519119bf4c63fb5..fec7a2e26aea3bbaf647806e4252f776ecdbd373 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -7,7 +7,7 @@ export { getVhtlcAmounts, } from "./arkade.js";
+ export { Client, ClientBuilder } from "./client.js";
+ // EVM HTLC utilities
+ export { buildEvmHtlcCallData, deriveEvmAddress, encodeApproveCallData, encodeCreateSwapCallData, encodeHtlcErc20CreateCallData, signEvmDigest, } from "./evm/index.js";
+-export { calculateSourceAmount, calculateTargetAmount, computeExchangeRate, } from "./price-calculations";
++export { calculateSourceAmount, calculateTargetAmount, computeExchangeRate, } from "./price-calculations.js";
+ // Redeem module (Arkade claim)
+ export { buildArkadeClaim, } from "./redeem/index.js";
+ // Refund module
+diff --git a/dist/redeem/gasless.js b/dist/redeem/gasless.js
+index 88ac06cc459e432c35af263dbc3108f9cae16b71..f5ade537fa3cb2c91f4236e638b835bae6b4fd24 100644
+--- a/dist/redeem/gasless.js
++++ b/dist/redeem/gasless.js
+@@ -4,7 +4,7 @@
+  * Claims are submitted via the server's claim-gasless endpoint which
+  * uses the HTLCCoordinator contract for gasless execution.
+  */
+-import { buildRedeemDigest, signEvmDigest } from "../evm";
++import { buildRedeemDigest, signEvmDigest } from "../evm/index.js";
+ /**
+  * Claims an Arkade-to-EVM swap gaslessly via the server.
+  *
