@@ -84,7 +84,7 @@ describe("TOKEN_DECIMALS", () => {
       "usdc_pol",
       "usdc_eth",
       "usdc_arb",
-      "usdt_pol",
+      "usdt0_pol",
       "usdt_eth",
       "usdt_arb",
     ];
@@ -94,11 +94,13 @@ describe("TOKEN_DECIMALS", () => {
   });
 
   it("covers all three chains per stablecoin", () => {
-    for (const base of ["usdc", "usdt"]) {
-      for (const chain of ["pol", "eth", "arb"]) {
-        expect(TOKEN_DECIMALS[`${base}_${chain}`]).toBeDefined();
-      }
+    for (const chain of ["pol", "eth", "arb"]) {
+      expect(TOKEN_DECIMALS[`usdc_${chain}`]).toBeDefined();
     }
+    // USDT uses usdt0_pol on Polygon, standard naming on others
+    expect(TOKEN_DECIMALS["usdt0_pol"]).toBeDefined();
+    expect(TOKEN_DECIMALS["usdt_eth"]).toBeDefined();
+    expect(TOKEN_DECIMALS["usdt_arb"]).toBeDefined();
   });
 
   it("returns undefined for unknown tokens", () => {

@@ -104,7 +104,7 @@ export { ArkadeBitcoinSkill, createArkadeBitcoinSkill } from "./arkadeBitcoin";
 export {
   ArkaLightningSkill,
   createLightningSkill,
-  type ArkaLightningSkillConfig,
+  type ArkadeLightningSkillConfig,
 } from "./lightning";
 
 // LendaSwap skill
