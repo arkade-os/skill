@@ -1,14 +1,14 @@
 # @arkade-os/skill
 
-Arkade skills for agent integration - send and receive Bitcoin over Arkade, onchain via onboard/offboard, Lightning Network via Boltz, and swap USDC/USDT via LendaSwap.
+Arkade SDK skill for AI agents — develop with the `@arkade-os/sdk` TypeScript SDK for Bitcoin wallets, Lightning, smart contracts, and stablecoin swaps.
 
 ## Features
 
-- **Bitcoin on Arkade**: Instant offchain Bitcoin transactions
-- **Onchain Payments**: Get paid onchain (onboard) and pay onchain (offboard)
+- **Bitcoin on Arkade**: Instant offchain Bitcoin transactions via VTXOs
+- **Onchain Ramps**: Onboard (onchain to offchain) and offboard (offchain to onchain)
 - **Lightning Network**: Pay and receive via Boltz submarine swaps
 - **Stablecoin Swaps**: Trade BTC for USDC/USDT on Polygon, Ethereum, Arbitrum
-- **CLI for Agents**: Command-line interface designed for AI agent integration
+- **SDK Development Guide**: SKILL.md teaches AI agents how to build with Arkade
 
 **Default Server:** https://arkade.computer
 
@@ -44,30 +44,6 @@ pnpm add @arkade-os/skill
 
 ## Quick Start
 
-### CLI Usage
-
-```bash
-# Initialize wallet (auto-generates private key, default server: arkade.computer)
-arkade init
-
-# Initialize with custom server
-arkade init https://custom-server.com
-
-# Check balance
-arkade balance
-
-# Send Bitcoin
-arkade send <ark-address> 50000
-
-# Create Lightning invoice
-arkade ln-invoice 25000 "Coffee payment"
-
-# Pay Lightning invoice
-arkade ln-pay lnbc...
-```
-
-### SDK Usage
-
 ```typescript
 import { Wallet, SingleKey } from "@arkade-os/sdk";
 import {
@@ -100,44 +76,16 @@ const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 
 | Skill | Description |
 |-------|-------------|
-| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade offchain, get paid onchain (onboard), pay onchain (offboard) |
+| `ArkadeBitcoinSkill` | Send/receive BTC via Arkade offchain, onboard/offboard ramps |
 | `ArkaLightningSkill` | Lightning payments via Boltz swaps |
 | `LendaSwapSkill` | USDC/USDT swaps via LendaSwap |
 
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `init [url]` | Initialize wallet (auto-generates key) |
-| `address` | Show Ark address |
-| `boarding-address` | Show boarding address |
-| `balance` | Show balance breakdown |
-| `send <addr> <amt>` | Send sats |
-| `history` | Transaction history |
-| `onboard` | Get paid onchain: convert received onchain BTC to offchain |
-| `offboard <addr>` | Pay onchain: send offchain BTC to an onchain address |
-| `ln-invoice <amt>` | Create Lightning invoice |
-| `ln-pay <bolt11>` | Pay Lightning invoice |
-| `ln-fees` | Show swap fees |
-| `ln-limits` | Show swap limits |
-| `ln-pending` | Show pending Lightning swaps |
-| `swap-quote <amt> <from> <to>` | Get stablecoin quote |
-| `swap-to-stable <amt> <token> <chain> <addr>` | Swap BTC to stablecoin |
-| `swap-to-btc <amt> <token> <chain> <addr>` | Swap stablecoin to BTC |
-| `swap-claim <id>` | Claim a completed swap |
-| `swap-refund <id> [addr]` | Refund an expired BTC→EVM swap |
-| `swap-evm-refund <id>` | Get EVM refund call data for EVM→BTC swaps |
-| `swap-status <id>` | Check swap status |
-| `swap-pending` | Show pending swaps |
-| `swap-pairs` | Show trading pairs |
-
-## Configuration
-
-- **Data:** `~/.arkade-wallet/config.json`
-
 ## Documentation
 
-See [SKILL.md](./SKILL.md) for detailed agent integration documentation.
+- [SKILL.md](./SKILL.md) — SDK development guide for AI agents
+- [Arkade Docs](https://docs.arkadeos.com) — full documentation
+- [Wallet SDK v0.3](https://docs.arkadeos.com/wallets/v0.3/setup) — SDK reference
+- [Smart Contracts](https://docs.arkadeos.com/contracts/overview) — contract development
 
 ## License
 

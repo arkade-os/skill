@@ -1,9 +1,8 @@
 /**
  * @arkade-os/skill - Arkade SDK Skills for Agent Integration
  *
- * This package provides skills for sending and receiving Bitcoin over
- * Arkade and Lightning, designed for agent integration (CLI-friendly
- * for agents like MoltBot).
+ * This package provides skill classes for working with the Arkade
+ * protocol programmatically, designed for AI agent integration.
  *
  * ## Available Skills
  *
@@ -21,7 +20,6 @@
  *   LendaSwapSkill,
  * } from "@arkade-os/skill";
  *
- * // Create a wallet (default server: arkade.computer)
  * const wallet = await Wallet.create({
  *   identity: SingleKey.fromHex(privateKeyHex),
  *   arkServerUrl: "https://arkade.computer",
@@ -38,31 +36,6 @@
  * // Stablecoin swaps
  * const lendaswap = new LendaSwapSkill({ wallet });
  * const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
- * ```
- *
- * ## CLI Usage
- *
- * ```bash
- * # Initialize wallet (default server: arkade.computer)
- * arkade init <private-key-hex>
- *
- * # Show addresses
- * arkade address
- * arkade boarding-address
- *
- * # Check balance
- * arkade balance
- *
- * # Send Bitcoin
- * arkade send <ark-address> <amount-sats>
- *
- * # Lightning
- * arkade ln-invoice <amount> [description]
- * arkade ln-pay <bolt11>
- *
- * # Stablecoins
- * arkade swap-quote <amount> <from> <to>
- * arkade swap-pairs
  * ```
  *
  * @packageDocumentation

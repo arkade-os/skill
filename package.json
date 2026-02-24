@@ -1,7 +1,7 @@
 {
     "name": "@arkade-os/skill",
     "version": "0.1.6",
-    "description": "Arkade SDK skills for agent integration - send and receive Bitcoin over Arkade and Lightning, swap USDC/USDT via LendaSwap",
+    "description": "Arkade SDK skill for AI agents - develop with @arkade-os/sdk for Bitcoin wallets, Lightning, smart contracts, and stablecoin swaps",
     "type": "module",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -14,12 +14,8 @@
             "default": "./dist/esm/index.js"
         }
     },
-    "bin": {
-        "arkade": "./cli/arkade.mjs"
-    },
     "files": [
         "dist",
-        "cli",
         "SKILL.md"
     ],
     "publishConfig": {
@@ -31,8 +27,8 @@
         "build:esm": "tsc -p tsconfig.esm.json --outDir dist/esm",
         "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist/cjs",
         "build:types": "tsc -p tsconfig.json --outDir dist/types --emitDeclarationOnly",
-        "format": "prettier --write src cli",
-        "lint": "prettier --check src cli",
+        "format": "prettier --write src",
+        "lint": "prettier --check src",
         "test": "vitest run",
         "test:watch": "vitest",
         "prepublishOnly": "pnpm run build"
@@ -49,24 +45,20 @@
         "typescript": "^5.9.0",
         "vitest": "^4.0.18"
     },
-    "skill": {
-        "configPaths": [
-            "~/.arkade-wallet/config.json",
-            "~/.arkade-wallet/lendaswap.db"
-        ]
-    },
     "keywords": [
         "bitcoin",
         "arkade",
         "lightning",
         "skill",
         "agent",
-        "cli",
+        "sdk",
+        "typescript",
         "mcp",
         "lendaswap",
         "usdc",
         "usdt",
-        "stablecoin"
+        "stablecoin",
+        "development"
     ],
     "author": "Ark Labs",
     "license": "MIT",

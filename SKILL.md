@@ -1,195 +1,191 @@
 ---
 name: arkade
-description: Send and receive Bitcoin over Arkade (offchain), onchain (via onboard/offboard), and Lightning. Swap USDC/USDT stablecoins.
+description: Guide for developing with the Arkade TypeScript SDK (@arkade-os/sdk) — Bitcoin wallets, Lightning, smart contracts, and stablecoin swaps.
 read_when:
-  - user wants to send or receive Bitcoin
-  - user mentions Arkade, Ark, or offchain Bitcoin
-  - user wants to use Lightning Network
-  - user wants to swap BTC for stablecoins (USDC, USDT)
-  - user wants to on-ramp or off-ramp Bitcoin
-  - user wants to get paid onchain or pay someone onchain
-  - user mentions boarding address or VTXOs
-  - user wants instant Bitcoin payments
+  - user wants to develop or build with Arkade
+  - user wants to use the @arkade-os/sdk TypeScript SDK
+  - user asks about Arkade wallet SDK or API
+  - user wants to create a Bitcoin wallet application
+  - user mentions VTXOs, virtual UTXOs, or offchain Bitcoin development
+  - user wants to integrate Lightning Network with Arkade
+  - user asks about Arkade smart contracts
+  - user wants to send or receive Bitcoin programmatically with Arkade
+  - user asks about onboarding or offboarding Bitcoin
+  - user mentions arkade.computer or Ark protocol SDK
+  - user mentions Ark protocol
 requires: []
 metadata:
   emoji: "₿"
 ---
 
-# Arkade Skill
+# Arkade SDK Development Guide
 
-Send and receive Bitcoin over Arkade (offchain), onchain (via onboard/offboard), and Lightning Network.
-Swap between BTC and stablecoins (USDC/USDT) via LendaSwap.
+Arkade is a programmable Bitcoin execution layer. It uses VTXOs (Virtual Transaction Outputs) to enable instant offchain Bitcoin transactions with near-zero fees, while users retain full self-custody and unilateral exit rights. No changes to Bitcoin are required.
 
-**Payment methods:**
-- **Offchain (Arkade)**: Instant transactions between Arkade wallets
-- **Onchain**: Get paid onchain via boarding address (onboard), pay onchain via offboard
-- **Lightning**: Pay and receive via Boltz submarine swaps
-
-**Default Server:** https://arkade.computer
-
-## Agent Safety Rules
-
-**IMPORTANT: The following commands move real funds. The agent MUST always ask the user for explicit confirmation before executing them, displaying the amount and destination:**
-
-- `send` — sends sats to an Ark address
-- `offboard` — moves offchain BTC to an onchain Bitcoin address
-- `onboard` — moves onchain BTC into Arkade
-- `ln-pay` — pays a Lightning invoice
-- `swap-to-stable` / `swap-to-btc` — executes a stablecoin swap
-- `swap-claim` / `swap-refund` / `swap-evm-refund` — claims or refunds a swap
-
-Read-only commands (`address`, `balance`, `history`, `ln-invoice`, `ln-fees`, `ln-limits`, `ln-pending`, `swap-quote`, `swap-pairs`, `swap-status`, `swap-pending`, `swap-evm-refund`, `boarding-address`) are safe to run without confirmation.
-
-**Refund behavior:**
-
-- **BTC→EVM swaps** (`swap-refund`): Refunds BTC back to your Ark address (or a custom address). The destination defaults to your Ark address if not specified.
-- **EVM→BTC swaps** (`swap-evm-refund`): Returns the EVM contract call data needed to refund locked EVM tokens. The user must execute this transaction from their EVM wallet.
-
-**Wallet initialization:** `init` creates a new private key stored at `~/.arkade-wallet/config.json` (permissions `0600`). All other commands require `init` to have been run first. The agent MUST inform the user and get confirmation before running `init` for the first time.
-
-## Installation
-
-### Quick Start (no install required)
+## SDK Installation & Setup
 
 ```bash
-# Using pnpm (recommended)
-pnpm dlx @arkade-os/skill init
-pnpm dlx @arkade-os/skill address
-
-# Using npx
-npx -y -p @arkade-os/skill arkade init
-npx -y -p @arkade-os/skill arkade address
+npm install @arkade-os/sdk
 ```
 
-### Global Install
+Requires Node.js >= 22.
+
+```typescript
+import { SingleKey, Wallet } from "@arkade-os/sdk";
+
+// Create an identity (private key)
+const identity = SingleKey.fromHex("your-private-key-hex");
+// Or generate a new one:
+// const identity = SingleKey.fromRandomBytes();
+
+const wallet = await Wallet.create({
+  identity,
+  arkServerUrl: "https://arkade.computer",
+});
+
+const address = await wallet.getAddress();
+console.log("Ark Address:", address);
+```
+
+For production, always use a secure key management solution rather than hardcoded keys.
+
+## Core Wallet Operations
+
+### Addresses
+
+```typescript
+// Offchain Ark address (ark1.../tark1...) — for instant payments
+const arkAddress = await wallet.getAddress();
+
+// Boarding address — for receiving onchain BTC to be onboarded later
+const boardingAddress = await wallet.getBoardingAddress();
+```
+
+### Balances
+
+```typescript
+const balance = await wallet.getBalance();
+
+console.log("Available:", balance.available, "sats"); // spendable now
+console.log("Total:", balance.total, "sats"); // includes recoverable
+console.log("Settled:", balance.settled, "sats"); // Bitcoin-anchored
+console.log("Preconfirmed:", balance.preconfirmed, "sats"); // cosigned
+
+// Pending onchain deposits
+console.log("Boarding:", balance.boarding.total, "sats");
+```
+
+### Sending Payments
+
+```typescript
+// Send to an Ark address — instant, near-zero fees
+const txid = await wallet.sendBitcoin({
+  address: "ark1...",
+  amount: 50000, // satoshis
+});
+```
+
+For onchain destinations (`bc1...`/`tb1...`), use the Ramps offboard flow below. For Lightning invoices, use `@arkade-os/boltz-swap`.
+
+### Receiving Payments
+
+```typescript
+const address = await wallet.getAddress();
+// Share this address with the sender
+
+// Monitor for incoming funds
+const stop = wallet.notifyIncomingFunds(async (notification) => {
+  if (notification.type === "vtxo") {
+    for (const vtxo of notification.vtxos) {
+      console.log(`Received ${vtxo.amount} sats`);
+    }
+  }
+});
+
+// Call stop() when done listening
+```
+
+### VTXOs
+
+```typescript
+const vtxos = await wallet.getVtxos();
+for (const vtxo of vtxos) {
+  console.log(vtxo.txid, vtxo.amount, vtxo.status);
+}
+```
+
+## Onchain Ramps (Onboard / Offboard)
+
+Convert between onchain Bitcoin UTXOs and offchain Arkade VTXOs. Best for large transfers; for everyday amounts, Lightning swaps have lower overhead.
+
+```typescript
+import { Ramps } from "@arkade-os/sdk";
+
+const ramps = new Ramps(wallet);
+
+// Get fee info from the Ark server
+const info = await wallet.arkProvider.getInfo();
+
+// Onboard: convert boarding UTXOs to VTXOs
+const commitmentTxid = await ramps.onboard(info.fees);
+
+// Offboard: convert VTXOs to onchain BTC
+const exitTxid = await ramps.offboard(
+  "bc1q...", // destination onchain address
+  info.fees,
+  // amount, // optional — defaults to all available
+);
+```
+
+## Lightning Network
 
 ```bash
-# Install globally
-npm install -g @arkade-os/skill
-# or
-pnpm add -g @arkade-os/skill
-
-# Then use directly
-arkade init
-arkade address
+npm install @arkade-os/boltz-swap
 ```
 
-### As a dependency
+Lightning integration uses Boltz submarine swaps to bridge between Arkade and the Lightning Network.
+
+```typescript
+import { ArkadeLightning, BoltzSwapProvider } from "@arkade-os/boltz-swap";
+
+const swapProvider = new BoltzSwapProvider({
+  apiUrl: "https://api.ark.boltz.exchange",
+  network: "bitcoin",
+});
+
+const lightning = new ArkadeLightning({
+  wallet,
+  swapProvider,
+});
+
+// Receive via Lightning (reverse swap)
+const { invoice, paymentHash } = await lightning.createLightningInvoice({
+  amount: 25000,
+});
+console.log("Pay this:", invoice);
+
+// Send via Lightning (submarine swap)
+const result = await lightning.sendLightningPayment({
+  invoice: "lnbc...",
+});
+console.log("Preimage:", result.preimage);
+```
+
+### Boltz API Endpoints
+
+| Network | URL |
+|---------|-----|
+| Bitcoin mainnet | `https://api.ark.boltz.exchange` |
+| Mutinynet | `https://api.boltz.mutinynet.arkade.sh` |
+| Regtest (local) | `http://localhost:9069` |
+
+## Skill Classes (this package)
+
+This package (`@arkade-os/skill`) provides higher-level wrapper classes over the SDK:
 
 ```bash
 npm install @arkade-os/skill
-# or
-pnpm add @arkade-os/skill
 ```
-
-## CLI Commands
-
-> **Note:** Examples below use `arkade` directly (assumes global install).
-> For pnpm: `pnpm dlx @arkade-os/skill <command>`
-> For npx: `npx -y -p @arkade-os/skill arkade <command>`
-
-### Wallet Management
-
-```bash
-# Initialize wallet (auto-generates private key, default server: arkade.computer)
-arkade init
-
-# Initialize with custom server
-arkade init https://custom-server.com
-
-# Show Ark address (for receiving offchain Bitcoin)
-arkade address
-
-# Show boarding address (for onchain deposits)
-arkade boarding-address
-
-# Show balance breakdown
-arkade balance
-```
-
-### Bitcoin Transactions
-
-```bash
-# Send sats to an Ark address
-arkade send <ark-address> <amount-sats>
-
-# Example: Send 50,000 sats
-arkade send ark1qxyz... 50000
-
-# View transaction history
-arkade history
-```
-
-### Onchain Payments (Onboard/Offboard)
-
-```bash
-# Get paid onchain: Receive BTC to your boarding address, then onboard to Arkade
-# Step 1: Get your boarding address
-arkade boarding-address
-
-# Step 2: Have someone send BTC to your boarding address
-
-# Step 3: Onboard the received BTC to make it available offchain
-arkade onboard
-
-# Pay onchain: Send offchain BTC to any onchain Bitcoin address
-arkade offboard <btc-address>
-
-# Example: Pay someone at bc1 address
-arkade offboard bc1qxyz...
-```
-
-### Lightning Network
-
-```bash
-# Create a Lightning invoice to receive payment
-arkade ln-invoice <amount-sats> [description]
-
-# Example: Create invoice for 25,000 sats
-arkade ln-invoice 25000 "Coffee payment"
-
-# Pay a Lightning invoice
-arkade ln-pay <bolt11-invoice>
-
-# Show swap fees
-arkade ln-fees
-
-# Show swap limits
-arkade ln-limits
-
-# Show pending swaps
-arkade ln-pending
-```
-
-### Stablecoin Swaps (LendaSwap)
-
-```bash
-# Get quote for BTC to stablecoin swap
-arkade swap-quote <amount-sats> <from> <to>
-
-# Example: Quote 100,000 sats to USDC on Polygon
-arkade swap-quote 100000 btc_arkade usdc_pol
-
-# Show available trading pairs
-arkade swap-pairs
-
-# Refund a BTC→EVM swap (defaults to your Ark address)
-arkade swap-refund <swap-id> [destination-address]
-
-# Get EVM refund call data for an EVM→BTC swap
-arkade swap-evm-refund <swap-id>
-```
-
-**Supported Tokens:**
-- `btc_arkade` - Bitcoin on Arkade
-- `usdc_pol` - USDC on Polygon
-- `usdc_eth` - USDC on Ethereum
-- `usdc_arb` - USDC on Arbitrum
-- `usdt_pol` - USDT on Polygon
-- `usdt_eth` - USDT on Ethereum
-- `usdt_arb` - USDT on Arbitrum
-
-## SDK Usage
 
 ```typescript
 import { Wallet, SingleKey } from "@arkade-os/sdk";
@@ -199,59 +195,65 @@ import {
   LendaSwapSkill,
 } from "@arkade-os/skill";
 
-// Create wallet (default server: arkade.computer)
 const wallet = await Wallet.create({
   identity: SingleKey.fromHex(privateKeyHex),
   arkServerUrl: "https://arkade.computer",
 });
 
-// === Bitcoin Operations ===
+// Bitcoin: addresses, balances, send/receive, onboard/offboard
 const bitcoin = new ArkadeBitcoinSkill(wallet);
-
-// Get addresses
-const arkAddress = await bitcoin.getArkAddress();
-const boardingAddress = await bitcoin.getBoardingAddress();
-
-// Check balance
 const balance = await bitcoin.getBalance();
-console.log("Total:", balance.total, "sats");
-console.log("Offchain available:", balance.offchain.available, "sats");
-console.log("Onchain pending:", balance.onchain.total, "sats");
+await bitcoin.send({ address: "ark1...", amount: 50000 });
 
-// Send Bitcoin
-const result = await bitcoin.send({
-  address: recipientArkAddress,
-  amount: 50000,
-});
-console.log("Sent! TX:", result.txid);
+// Lightning: invoices, payments via Boltz
+const lightning = new ArkaLightningSkill({ wallet, network: "bitcoin" });
+const inv = await lightning.createInvoice({ amount: 25000 });
 
-// === Lightning Operations ===
-const lightning = new ArkaLightningSkill({
-  wallet,
-  network: "bitcoin",
-});
+// Stablecoin swaps: BTC <-> USDC/USDT
+const lendaswap = new LendaSwapSkill({ wallet });
+const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
+```
 
-// Create invoice
-const invoice = await lightning.createInvoice({
-  amount: 25000,
-  description: "Coffee payment",
-});
-console.log("Invoice:", invoice.bolt11);
+### ArkadeBitcoinSkill
 
-// Pay invoice
-const payment = await lightning.payInvoice({
-  bolt11: "lnbc...",
-});
-console.log("Paid! Preimage:", payment.preimage);
+- `getArkAddress()` / `getBoardingAddress()` — get addresses
+- `getBalance()` — balance breakdown (offchain + onchain)
+- `send({ address, amount })` — send sats offchain
+- `getTransactionHistory()` — transaction list
+- `onboard(params)` / `offboard(params)` — onchain ramps
+- `waitForIncomingFunds(timeout?)` — wait for incoming payment
 
-// === Stablecoin Swaps ===
+### ArkaLightningSkill
+
+- `createInvoice({ amount, description? })` — Lightning invoice (reverse swap)
+- `payInvoice({ bolt11 })` — pay Lightning invoice (submarine swap)
+- `getFees()` / `getLimits()` — swap fees and limits
+- `getPendingSwaps()` / `getSwapHistory()` — swap tracking
+
+### LendaSwapSkill
+
+- `getQuoteBtcToStablecoin(amount, token)` / `getQuoteStablecoinToBtc(amount, token)`
+- `swapBtcToStablecoin(params)` / `swapStablecoinToBtc(params)`
+- `getSwapStatus(swapId)` / `getPendingSwaps()` / `getSwapHistory()`
+- `claimSwap(swapId)` / `refundSwap(swapId)`
+- `getAvailablePairs()`
+
+## Stablecoin Swaps (LendaSwap)
+
+Non-custodial BTC/stablecoin atomic swaps via HTLCs.
+
+**Supported tokens:** `usdc_pol`, `usdc_eth`, `usdc_arb`, `usdt0_pol`, `usdt_eth`, `usdt_arb`
+
+**Supported chains:** `polygon`, `ethereum`, `arbitrum`
+
+```typescript
 const lendaswap = new LendaSwapSkill({ wallet });
 
 // Get quote
 const quote = await lendaswap.getQuoteBtcToStablecoin(100000, "usdc_pol");
 console.log("You'll receive:", quote.targetAmount, "USDC");
 
-// Execute swap
+// Execute swap (BTC -> USDC)
 const swap = await lendaswap.swapBtcToStablecoin({
   targetAddress: "0x...", // EVM address
   targetToken: "usdc_pol",
@@ -259,60 +261,83 @@ const swap = await lendaswap.swapBtcToStablecoin({
   sourceAmount: 100000,
 });
 console.log("Swap ID:", swap.swapId);
+
+// Check status
+const status = await lendaswap.getSwapStatus(swap.swapId);
+
+// Claim completed swap
+const claim = await lendaswap.claimSwap(swap.swapId);
 ```
 
-## Configuration
+## Smart Contracts
 
-**Data Storage:** `~/.arkade-wallet/config.json`
+Arkade supports any valid Tapscript as VTXO locking conditions, enabling programmable offchain Bitcoin.
 
-Private keys are auto-generated on first use and stored locally. They are never exposed via CLI arguments or stdout. No environment variables required. The LendaSwap API is publicly accessible.
+```bash
+npm install @arkade-os/sdk @scure/base
+```
 
-## Skill Interfaces
+```typescript
+import {
+  RestArkProvider,
+  RestIndexerProvider,
+  SingleKey,
+  VtxoScript,
+  MultisigTapscript,
+  CSVMultisigTapscript,
+} from "@arkade-os/sdk";
+import { hex } from "@scure/base";
 
-### ArkadeBitcoinSkill
+const arkProvider = new RestArkProvider("https://mutinynet.arkade.sh");
+const indexerProvider = new RestIndexerProvider("https://mutinynet.arkade.sh");
+const info = await arkProvider.getInfo();
+const serverPubkey = hex.decode(info.signerPubkey).slice(1);
+```
 
-- `getArkAddress()` - Get Ark address for receiving offchain payments
-- `getBoardingAddress()` - Get boarding address for receiving onchain payments
-- `getBalance()` - Get balance breakdown
-- `send(params)` - Send Bitcoin to Ark address (offchain)
-- `getTransactionHistory()` - Get transaction history
-- `onboard(params)` - Get paid onchain: convert onchain BTC to offchain
-- `offboard(params)` - Pay onchain: send offchain BTC to any onchain address
-- `waitForIncomingFunds(timeout?)` - Wait for incoming funds
+**Available contract primitives:**
+- **MultisigTapscript** — N-of-N multisig
+- **CLTVMultisigTapscript** — Multisig with absolute timelocks
+- **CSVMultisigTapscript** — Multisig with relative timelocks
+- **VtxoScript** — Combine spending paths into Taproot trees
 
-### ArkaLightningSkill
+**Contract patterns in docs:** HTLC/Hashlock, Escrow (3-path), Spilman channels, Dryja-Poon channels, Lightning channels, chain swaps, Oracle DLC.
 
-- `createInvoice(params)` - Create Lightning invoice
-- `payInvoice(params)` - Pay Lightning invoice
-- `getFees()` - Get swap fees
-- `getLimits()` - Get swap limits
-- `getPendingSwaps()` - Get pending swaps
-- `getSwapHistory()` - Get swap history
-- `isAvailable()` - Check if Lightning is available
+Use `@scure/base` for encoding, NOT `bitcoinjs-lib`.
 
-### LendaSwapSkill
+See: https://docs.arkadeos.com/contracts/overview
 
-- `getQuoteBtcToStablecoin(amount, token)` - Quote BTC to stablecoin
-- `getQuoteStablecoinToBtc(amount, token)` - Quote stablecoin to BTC
-- `swapBtcToStablecoin(params)` - Swap BTC to stablecoin
-- `swapStablecoinToBtc(params)` - Swap stablecoin to BTC
-- `getSwapStatus(swapId)` - Get swap status
-- `getPendingSwaps()` - Get pending swaps
-- `getSwapHistory()` - Get swap history
-- `getAvailablePairs()` - Get available trading pairs
-- `claimSwap(swapId)` - Claim completed swap
-- `refundSwap(swapId)` - Refund expired swap
+## Networks & Resources
 
-## Networks
+| Network | Server URL | Explorer |
+|---------|-----------|----------|
+| Bitcoin mainnet | `https://arkade.computer` | https://arkade.space |
+| Mutinynet (testnet) | `https://mutinynet.arkade.sh` | https://explorer.mutinynet.arkade.sh |
+| Signet | `https://signet.arkade.sh` | https://explorer.signet.arkade.sh |
+| Regtest (local) | `http://localhost:7070` | — |
 
-Arkade supports multiple networks:
-- `bitcoin` - Bitcoin mainnet
-- `testnet` - Bitcoin testnet
-- `signet` - Bitcoin signet
-- `regtest` - Local regtest
-- `mutinynet` - Mutiny signet
+**Local development:**
 
-## Support
+```bash
+nigiri start --ark
+```
 
+This starts a Bitcoin regtest node with an Arkade operator at `http://localhost:7070`.
+
+## Key Concepts
+
+- **VTXOs**: Virtual Transaction Outputs — self-custodial offchain Bitcoin coins. States: preconfirmed, settled, recoverable, spent.
+- **Batch Swaps**: How VTXOs achieve Bitcoin finality — multiple transactions batched into a single onchain settlement.
+- **Preconfirmation**: Instant confirmation cosigned by the operator, before onchain settlement.
+- **Virtual Mempool**: DAG-based offchain execution engine that processes Arkade transactions.
+- **Unilateral Exit**: Users can always withdraw their funds onchain without operator cooperation.
+- **Ark Addresses**: `ark1...` (mainnet) / `tark1...` (testnet) — bech32m-encoded addresses containing server + user keys.
+
+## Documentation
+
+- Full docs: https://docs.arkadeos.com
+- Technical primer: https://docs.arkadeos.com/primer
+- Wallet SDK v0.3: https://docs.arkadeos.com/wallets/v0.3/setup
+- Smart contracts: https://docs.arkadeos.com/contracts/overview
+- Lightning swaps: https://docs.arkadeos.com/contracts/lightning-swaps
+- LLM-friendly index: https://docs.arkadeos.com/llms.txt
 - GitHub: https://github.com/arkade-os/skill
-- Documentation: https://docs.arkadeos.com

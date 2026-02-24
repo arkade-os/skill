@@ -1,12 +1,3 @@
-/**
- * ArkaLightningSkill - Lightning Network payments via Boltz submarine swaps.
- *
- * This skill provides Lightning Network capabilities for Arkade wallets
- * designed for AI agent integration.
- *
- * @module skills/lightning
- */
-
 import {
   ArkadeLightning,
   BoltzSwapProvider,
@@ -28,10 +19,6 @@ import type {
   SwapStatus,
 } from "./types";
 
-/**
- * Default Boltz API URLs by network.
- * Using Ark-specific Boltz endpoints for Arkade swaps.
- */
 const BOLTZ_API_URLS: Record<string, string> = {
   bitcoin: "https://api.ark.boltz.exchange",
   mainnet: "https://api.ark.boltz.exchange",
@@ -41,67 +28,18 @@ const BOLTZ_API_URLS: Record<string, string> = {
   mutinynet: "https://api.boltz.mutinynet.arkade.sh",
 };
 
-/**
- * Configuration for the ArkaLightningSkill.
- */
-export interface ArkaLightningSkillConfig {
-  /** The Arkade wallet to use */
+export interface ArkadeLightningSkillConfig {
   wallet: Wallet;
-  /** Network name */
   network: NetworkName;
-  /** Optional Ark provider (will use wallet's provider if not specified) */
   arkProvider?: ArkProvider;
-  /** Optional Indexer provider */
   indexerProvider?: IndexerProvider;
-  /** Optional custom Boltz API URL */
   boltzApiUrl?: string;
-  /** Optional Boltz referral ID */
   referralId?: string;
-  /** Enable background swap monitoring (default: false) */
   enableSwapManager?: boolean;
 }
 
-/**
- * ArkaLightningSkill provides Lightning Network payment capabilities
- * for Arkade wallets using Boltz submarine swaps.
- *
- * This skill enables:
- * - Receiving Lightning payments into your Arkade wallet (reverse swaps)
- * - Sending Lightning payments from your Arkade wallet (submarine swaps)
- *
- * @example
- * ```typescript
- * import { Wallet, SingleKey } from "@arkade-os/sdk";
- * import { ArkaLightningSkill } from "@arkade-os/skill";
- *
- * // Create a wallet
- * const wallet = await Wallet.create({
- *   identity: SingleKey.fromHex(privateKeyHex),
- *   arkServerUrl: "https://arkade.computer",
- * });
- *
- * // Create the Lightning skill
- * const lightning = new ArkaLightningSkill({
- *   wallet,
- *   network: "bitcoin",
- * });
- *
- * // Create an invoice to receive Lightning payment
- * const invoice = await lightning.createInvoice({
- *   amount: 50000, // 50,000 sats
- *   description: "Payment for coffee",
- * });
- * console.log("Pay this invoice:", invoice.bolt11);
- *
- * // Pay a Lightning invoice
- * const result = await lightning.payInvoice({
- *   bolt11: "lnbc...",
- * });
- * console.log("Paid! Preimage:", result.preimage);
- * ```
- */
 export class ArkaLightningSkill implements LightningSkill {
-  readonly name = "arka-lightning";
+  readonly name = "arkade-lightning";
   readonly description =
     "Lightning Network payments via Boltz submarine swaps for Arkade wallets";
   readonly version = "1.0.0";
@@ -109,13 +47,9 @@ export class ArkaLightningSkill implements LightningSkill {
   private readonly arkadeLightning: ArkadeLightning;
   private readonly swapProvider: BoltzSwapProvider;
   private readonly network: NetworkName;
+  private readonly swapErrors = new Map<string, string>();
 
-  /**
-   * Creates a new ArkaLightningSkill instance.
-   *
-   * @param config - Configuration options
-   */
-  constructor(config: ArkaLightningSkillConfig) {
+  constructor(config: ArkadeLightningSkillConfig) {
     this.network = config.network;
 
     const boltzApiUrl =
@@ -140,13 +74,18 @@ export class ArkaLightningSkill implements LightningSkill {
         ? { enableAutoActions: true, autoStart: true }
         : undefined,
     });
+
+    // Track swap errors from SwapManager for debugging
+    const manager = this.arkadeLightning.getSwapManager?.();
+    if (manager) {
+      manager.onSwapFailed?.((swap: { id: string }, error: unknown) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.swapErrors.set(swap.id, msg);
+        console.error(`[lightning] swap ${swap.id} failed: ${msg}`);
+      });
+    }
   }
 
-  /**
-   * Check if the Lightning skill is available.
-   *
-   * @returns true if the skill is properly configured
-   */
   async isAvailable(): Promise<boolean> {
     try {
       await this.swapProvider.getFees();
@@ -156,23 +95,12 @@ export class ArkaLightningSkill implements LightningSkill {
     }
   }
 
-  /**
-   * Create a Lightning invoice for receiving payment.
-   *
-   * This creates a Boltz reverse swap, which locks funds on Boltz's side
-   * when someone pays the invoice. The funds are then claimed into your
-   * Arkade wallet as VTXOs.
-   *
-   * @param params - Invoice parameters
-   * @returns The created invoice with payment details
-   */
   async createInvoice(params: CreateInvoiceParams): Promise<LightningInvoice> {
     const response = await this.arkadeLightning.createLightningInvoice({
       amount: params.amount,
       description: params.description,
     });
 
-    // Extract expiry from invoice
     const decoded = decodeInvoice(response.invoice);
 
     return {
@@ -186,16 +114,6 @@ export class ArkaLightningSkill implements LightningSkill {
     };
   }
 
-  /**
-   * Pay a Lightning invoice.
-   *
-   * This creates a Boltz submarine swap, which sends funds from your
-   * Arkade wallet to a swap address. Boltz then pays the Lightning invoice
-   * and you receive the preimage as proof of payment.
-   *
-   * @param params - Payment parameters
-   * @returns Result containing the preimage and transaction details
-   */
   async payInvoice(params: PayInvoiceParams): Promise<PaymentResult> {
     const response = await this.arkadeLightning.sendLightningPayment({
       invoice: params.bolt11,
@@ -208,46 +126,25 @@ export class ArkaLightningSkill implements LightningSkill {
     };
   }
 
-  /**
-   * Get fee information for Lightning swaps.
-   *
-   * @returns Fee structure for submarine and reverse swaps
-   */
   async getFees(): Promise<LightningFees> {
     return this.arkadeLightning.getFees();
   }
 
-  /**
-   * Get limits for Lightning swaps.
-   *
-   * @returns Min and max amounts for swaps
-   */
   async getLimits(): Promise<LightningLimits> {
     return this.arkadeLightning.getLimits();
   }
 
-  /**
-   * Get pending swaps.
-   *
-   * @returns Array of pending swap information
-   */
   async getPendingSwaps(): Promise<SwapInfo[]> {
-    const [reverseSwaps, submarineSwaps] = await Promise.all([
-      this.arkadeLightning.getPendingReverseSwaps(),
-      this.arkadeLightning.getPendingSubmarineSwaps(),
-    ]);
+    // Refresh statuses from Boltz API before returning
+    try {
+      await this.arkadeLightning.refreshSwapsStatus();
+    } catch {
+      // Non-fatal: return stale data if refresh fails
+    }
 
-    return [
-      ...reverseSwaps.map((swap) => this.mapReverseSwap(swap)),
-      ...submarineSwaps.map((swap) => this.mapSubmarineSwap(swap)),
-    ];
+    return this.getSwapHistory();
   }
 
-  /**
-   * Get swap history.
-   *
-   * @returns Array of all swaps (pending and completed)
-   */
   async getSwapHistory(): Promise<SwapInfo[]> {
     const history = await this.arkadeLightning.getSwapHistory();
     return history.map((swap) =>
@@ -257,53 +154,28 @@ export class ArkaLightningSkill implements LightningSkill {
     );
   }
 
-  /**
-   * Wait for an invoice to be paid and claim the funds.
-   *
-   * @param pendingSwap - The pending reverse swap from createInvoice
-   * @returns Transaction ID of the claimed funds
-   */
   async waitAndClaim(
     pendingSwap: PendingReverseSwap,
   ): Promise<{ txid: string }> {
     return this.arkadeLightning.waitAndClaim(pendingSwap);
   }
 
-  /**
-   * Get the underlying ArkadeLightning instance for advanced operations.
-   *
-   * @returns The ArkadeLightning instance
-   */
   getArkadeLightning(): ArkadeLightning {
     return this.arkadeLightning;
   }
 
-  /**
-   * Get the swap provider for direct Boltz API access.
-   *
-   * @returns The BoltzSwapProvider instance
-   */
   getSwapProvider(): BoltzSwapProvider {
     return this.swapProvider;
   }
 
-  /**
-   * Start the background swap manager if enabled.
-   */
   async startSwapManager(): Promise<void> {
     await this.arkadeLightning.startSwapManager();
   }
 
-  /**
-   * Stop the background swap manager.
-   */
   async stopSwapManager(): Promise<void> {
     await this.arkadeLightning.stopSwapManager();
   }
 
-  /**
-   * Dispose of resources and stop the swap manager.
-   */
   async dispose(): Promise<void> {
     await this.arkadeLightning.dispose();
   }
@@ -316,11 +188,11 @@ export class ArkaLightningSkill implements LightningSkill {
       amount: swap.response.onchainAmount,
       createdAt: new Date(swap.createdAt),
       invoice: swap.response.invoice,
+      error: this.swapErrors.get(swap.id),
     };
   }
 
   private mapSubmarineSwap(swap: PendingSubmarineSwap): SwapInfo {
-    // Decode invoice to get amount
     let amount = 0;
     try {
       const decoded = decodeInvoice(swap.request.invoice);
@@ -336,22 +208,15 @@ export class ArkaLightningSkill implements LightningSkill {
       amount,
       createdAt: new Date(swap.createdAt),
       invoice: swap.request.invoice,
+      error: this.swapErrors.get(swap.id),
     };
   }
 }
 
-/**
- * Create an ArkaLightningSkill from a wallet and network.
- *
- * @param wallet - The Arkade wallet to use
- * @param network - The network name
- * @param options - Optional configuration
- * @returns A new ArkaLightningSkill instance
- */
 export function createLightningSkill(
   wallet: Wallet,
   network: NetworkName,
-  options?: Partial<Omit<ArkaLightningSkillConfig, "wallet" | "network">>,
+  options?: Partial<Omit<ArkadeLightningSkillConfig, "wallet" | "network">>,
 ): ArkaLightningSkill {
   return new ArkaLightningSkill({
     wallet,
