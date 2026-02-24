@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@lendasat/lendaswap-sdk-pure@0.0.2':
-    hash: 92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f
-    path: patches/@lendasat__lendaswap-sdk-pure@0.0.2.patch
+  '@lendasat/lendaswap-sdk-pure@0.2.1':
+    hash: cb123a1cc4a1dd52d34f1f19f49817f47b0a48df6608b1a078ef033782a66efc
+    path: patches/@lendasat__lendaswap-sdk-pure@0.2.1.patch
 
 importers:
 
@@ -20,8 +20,8 @@ importers:
         specifier: ^0.3.12
         version: 0.3.12
       '@lendasat/lendaswap-sdk-pure':
-        specifier: ^0.0.2
-        version: 0.0.2(patch_hash=92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f)
+        specifier: ^0.2.1
+        version: 0.2.1(patch_hash=cb123a1cc4a1dd52d34f1f19f49817f47b0a48df6608b1a078ef033782a66efc)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -216,8 +216,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@lendasat/lendaswap-sdk-pure@0.0.2':
-    resolution: {integrity: sha512-4N9ugC/5ja7p5U0pRfRhopxu7Nld5u94117kklucmjDd8zdLd4BUdIVXObLhwgze+/WvAaU6jCp/S3Maks54Lw==}
+  '@lendasat/lendaswap-sdk-pure@0.2.1':
+    resolution: {integrity: sha512-zxji9kV7ud//fLMiaUOKoSuugw8w68HC7zL6y7y1sG8iGx9EW5qdoWpVJ2+Gv47ppPEQwvsOxaPzlDb1DFx0BQ==}
 
   '@marcbachmann/cel-js@7.0.0':
     resolution: {integrity: sha512-sbtR8pvTAsDPiyigebwLyqweLnocmBS9MG5tTnVUL2PZ9Hc2Dj2e4tnvTcZ1s463Og9NKD59TaPvTK9CEZQhiQ==}
@@ -229,6 +229,10 @@ packages:
 
   '@noble/curves@2.0.0':
     resolution: {integrity: sha512-RiwZZeJnsTnhT+/gg2KvITJZhK5oagQrpZo+yQyd3mv3D5NAG2qEeEHpw7IkXRlpkoD45wl2o4ydHAvY9wyEfw==}
+    engines: {node: '>= 20.19.0'}
+
+  '@noble/curves@2.0.1':
+    resolution: {integrity: sha512-vs1Az2OOTBiP4q0pwjW5aF0xp9n4MxVrmkFBxc6EKZc6ddYx5gaZiAsZoq0uRRXWbi3AT/sBqn05eRPtn1JCPw==}
     engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@1.8.0':
@@ -617,6 +621,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prettier@3.8.1:
@@ -903,9 +908,10 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@lendasat/lendaswap-sdk-pure@0.0.2(patch_hash=92e3eadb46707bd75bdae9b03c1bd376ba16cf1d25d429625739f315a70d5e1f)':
+  '@lendasat/lendaswap-sdk-pure@0.2.1(patch_hash=cb123a1cc4a1dd52d34f1f19f49817f47b0a48df6608b1a078ef033782a66efc)':
     dependencies:
       '@arkade-os/sdk': 0.3.12
+      '@noble/curves': 2.0.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
@@ -924,6 +930,10 @@ snapshots:
   '@noble/curves@2.0.0':
     dependencies:
       '@noble/hashes': 2.0.0
+
+  '@noble/curves@2.0.1':
+    dependencies:
+      '@noble/hashes': 2.0.1
 
   '@noble/hashes@1.8.0': {}
 
