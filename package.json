@@ -1,6 +1,6 @@
 {
     "name": "@arkade-os/skill",
-    "version": "0.1.6",
+    "version": "0.2.0",
     "description": "Arkade SDK skill for AI agents - develop with @arkade-os/sdk for Bitcoin wallets, Lightning, smart contracts, and stablecoin swaps",
     "type": "module",
     "main": "./dist/cjs/index.js",
